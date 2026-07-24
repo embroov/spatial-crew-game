@@ -29,8 +29,26 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const keysRef = useRef<{ [key: string]: boolean }>({});
   const walkDistanceRef = useRef<number>(0);
 
+  const loungeBarImgRef = useRef<HTMLImageElement | null>(null);
+  const gameRoomImgRef = useRef<HTMLImageElement | null>(null);
+
   const [currentRoom, setCurrentRoom] = useState<string>('Grand Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
+
+  // Load custom high-res room images
+  useEffect(() => {
+    const imgLounge = new Image();
+    imgLounge.src = '/lounge_bar.jpg';
+    imgLounge.onload = () => {
+      loungeBarImgRef.current = imgLounge;
+    };
+
+    const imgGame = new Image();
+    imgGame.src = '/game_room.jpg';
+    imgGame.onload = () => {
+      gameRoomImgRef.current = imgGame;
+    };
+  }, []);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -158,6 +176,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const width = (canvas.width = window.innerWidth);
           const height = (canvas.height = window.innerHeight);
 
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+
           ctx.fillStyle = '#030712';
           ctx.fillRect(0, 0, width, height);
 
@@ -184,19 +205,26 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.stroke();
           }
 
-          // Render Vector Rooms Floor & Boundaries
+          // Render Rooms Floor & Graphics
           for (const room of GameMap.ROOMS) {
             ctx.fillStyle = room.color;
             ctx.fillRect(room.x, room.y, room.width, room.height);
 
-            ctx.strokeStyle = 'rgba(51, 65, 85, 0.6)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(room.x, room.y, room.width, room.height);
+            // Render Custom High-Res Images for Lounge Bar and Game Room
+            if (room.name === 'Lounge Bar' && loungeBarImgRef.current) {
+              ctx.drawImage(loungeBarImgRef.current, room.x, room.y, room.width, room.height);
+            } else if (room.name === 'Game Room' && gameRoomImgRef.current) {
+              ctx.drawImage(gameRoomImgRef.current, room.x, room.y, room.width, room.height);
+            } else {
+              ctx.strokeStyle = 'rgba(51, 65, 85, 0.6)';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(room.x, room.y, room.width, room.height);
 
-            ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
-            ctx.font = 'bold 24px system-ui, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(room.name.toUpperCase(), room.x + room.width / 2, room.y + room.height / 2);
+              ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+              ctx.font = 'bold 24px system-ui, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(room.name.toUpperCase(), room.x + room.width / 2, room.y + room.height / 2);
+            }
           }
 
           // Central Fountain Monument

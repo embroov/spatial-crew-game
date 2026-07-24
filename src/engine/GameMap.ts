@@ -8,7 +8,7 @@ export class GameMap {
   // Open Plaza Spawn in front of the central fountain
   public static readonly SPAWN_POS: Position = { x: 2000, y: 1380 };
 
-  // Social Room Zones matching the exact map image layout
+  // Social Room Zones
   public static readonly ROOMS: MapRoomZone[] = [
     {
       name: "Observatory",
@@ -92,7 +92,7 @@ export class GameMap {
     }
   ];
 
-  // Walls & Solid Obstacles matching exact image graphic doorways
+  // Walls & Solid Obstacles matching exact image graphic doorways & furniture
   public static readonly WALLS: MapWall[] = [
     // Outer Border Boundaries
     { x: 0, y: 0, width: 4000, height: 60 },
@@ -104,60 +104,66 @@ export class GameMap {
     { x: 520, y: 140, width: 30, height: 460 },
     { x: 1450, y: 140, width: 30, height: 460 },
     { x: 520, y: 570, width: 380, height: 30 },
-    { x: 1100, y: 570, width: 380, height: 30 }, // Stairs entrance doorway
+    { x: 1100, y: 570, width: 380, height: 30 },
 
     // --- Rooftop Walls ---
     { x: 2480, y: 140, width: 30, height: 460 },
     { x: 3420, y: 140, width: 30, height: 460 },
     { x: 2480, y: 570, width: 380, height: 30 },
-    { x: 3060, y: 570, width: 390, height: 30 }, // Stairs entrance doorway
+    { x: 3060, y: 570, width: 390, height: 30 },
 
-    // --- Lounge Bar Walls ---
-    { x: 140, y: 680, width: 950, height: 30 }, // Solid top wall
-    { x: 140, y: 680, width: 30, height: 640 }, // Solid left wall
-    { x: 140, y: 1290, width: 950, height: 30 },// Bottom wall
-    { x: 1060, y: 680, width: 30, height: 160 }, // Right wall top portion
-    { x: 1060, y: 1120, width: 30, height: 200 },// Right wall bottom portion (Wide Doorway at Y: 840..1120 aligned with pink neon arrows!)
-    { x: 300, y: 780, width: 500, height: 70 },  // Bar Counter obstacle
+    // --- Lounge Bar Walls & Furniture ---
+    { x: 140, y: 680, width: 950, height: 30 }, // Top wall
+    { x: 140, y: 680, width: 30, height: 640 }, // Left wall
+    { x: 140, y: 1290, width: 380, height: 30 },
+    { x: 710, y: 1290, width: 380, height: 30 }, // Bottom wall with entrance (520..710)
+    { x: 1060, y: 680, width: 30, height: 260 },
+    { x: 1060, y: 1140, width: 30, height: 180 },// Right wall with wide Doorway at Y: 940..1140 (Pink neon arrows!)
+    { x: 300, y: 720, width: 620, height: 130 }, // Bar Counter & Stools
+    { x: 520, y: 980, width: 190, height: 150 }, // Center Sofa Grouping
+    { x: 330, y: 1000, width: 120, height: 120 },// Left Round Table
+    { x: 750, y: 1000, width: 120, height: 120 },// Right Round Table
 
     // --- DJ Stage Walls ---
     { x: 2880, y: 680, width: 980, height: 30 },
     { x: 3830, y: 680, width: 30, height: 680 },
     { x: 2880, y: 1330, width: 980, height: 30 },
-    { x: 2880, y: 680, width: 30, height: 160 },
-    { x: 2880, y: 1120, width: 30, height: 240 }, // Wide Doorway at Y: 840..1120 aligned with pink neon arrows!
+    { x: 2880, y: 680, width: 30, height: 260 },
+    { x: 2880, y: 1140, width: 30, height: 220 }, // Wide Doorway at Y: 940..1140 (Pink neon arrows!)
     { x: 3200, y: 730, width: 450, height: 90 },  // DJ Stage obstacle
 
-    // --- Game Room Walls ---
-    { x: 140, y: 1400, width: 940, height: 30 },
-    { x: 140, y: 1400, width: 30, height: 700 },
-    { x: 140, y: 2070, width: 940, height: 30 },
-    { x: 1050, y: 1400, width: 30, height: 160 },
-    { x: 1050, y: 1820, width: 30, height: 280 }, // Doorway (1560..1820)
-    { x: 450, y: 1650, width: 300, height: 150 }, // Pool Table
+    // --- Game Room Walls & Furniture ---
+    { x: 140, y: 1400, width: 940, height: 30 }, // Top wall
+    { x: 140, y: 1400, width: 30, height: 700 }, // Left wall
+    { x: 140, y: 2070, width: 350, height: 30 },
+    { x: 670, y: 2070, width: 410, height: 30 }, // Bottom wall with exit doorway (490..670)
+    { x: 1050, y: 1400, width: 30, height: 670 },// Right wall
+    { x: 430, y: 1650, width: 230, height: 150 },// Center Pool Table
+    { x: 770, y: 1670, width: 110, height: 160 },// Foosball Table
+    { x: 180, y: 1540, width: 120, height: 440 },// Arcade Cabinets Row
+    { x: 670, y: 1440, width: 230, height: 100 },// Pinball & Drinks Vending
 
-    // --- Event Hall Walls (FIXED ENTRANCE DOORWAY) ---
+    // --- Event Hall Walls ---
     { x: 1100, y: 1860, width: 320, height: 30 },
-    { x: 1780, y: 1860, width: 370, height: 30 }, // OPEN ENTRANCE DOORWAY at X: 1420..1780 (Blue neon arrows!)
+    { x: 1780, y: 1860, width: 370, height: 30 }, // OPEN ENTRANCE DOORWAY (1420..1780)
     { x: 1100, y: 1860, width: 30, height: 660 },
     { x: 2120, y: 1860, width: 30, height: 660 },
     { x: 1100, y: 2490, width: 320, height: 30 },
     { x: 1780, y: 2490, width: 370, height: 30 }, // Bottom exit doorway
 
-
-    // --- Chill Room Walls (FIXED ENTRANCE DOORWAY) ---
+    // --- Chill Room Walls ---
     { x: 2180, y: 1860, width: 140, height: 30 },
-    { x: 2680, y: 1860, width: 220, height: 30 }, // OPEN ENTRANCE DOORWAY at X: 2320..2680 (Green neon arrows!)
+    { x: 2680, y: 1860, width: 220, height: 30 }, // OPEN ENTRANCE DOORWAY (2320..2680)
     { x: 2180, y: 1860, width: 30, height: 660 },
     { x: 2870, y: 1860, width: 30, height: 660 },
     { x: 2180, y: 2490, width: 140, height: 30 },
-    { x: 2680, y: 2490, width: 220, height: 30 }, // Bottom exit doorway
+    { x: 2680, y: 2490, width: 220, height: 30 },
 
     // --- Cafe Walls ---
     { x: 2920, y: 1440, width: 940, height: 30 },
     { x: 3830, y: 1440, width: 30, height: 600 },
     { x: 2920, y: 1440, width: 30, height: 120 },
-    { x: 2920, y: 1800, width: 30, height: 240 }, // Left Doorway at Y: 1560..1800 (Orange neon arrows!)
+    { x: 2920, y: 1800, width: 30, height: 240 },
     { x: 3100, y: 1520, width: 450, height: 70 }, // Coffee Counter
 
     // --- Voice Pods Walls ---
@@ -175,7 +181,7 @@ export class GameMap {
    */
   public static checkCollision(x: number, y: number, radius: number = 18): boolean {
     if (x - radius < 60 || x + radius > this.MAP_WIDTH - 60 ||
-      y - radius < 60 || y + radius > this.MAP_HEIGHT - 60) {
+        y - radius < 60 || y + radius > this.MAP_HEIGHT - 60) {
       return true;
     }
 
@@ -199,7 +205,7 @@ export class GameMap {
   public static getCurrentRoom(x: number, y: number): string {
     for (const room of this.ROOMS) {
       if (x >= room.x && x <= room.x + room.width &&
-        y >= room.y && y <= room.y + room.height) {
+          y >= room.y && y <= room.y + room.height) {
         return room.name;
       }
     }
