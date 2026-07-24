@@ -143,7 +143,7 @@ export class GameMap {
     { x: 2120, y: 1860, width: 30, height: 660 },
     { x: 1100, y: 2490, width: 320, height: 30 },
     { x: 1780, y: 2490, width: 370, height: 30 }, // Bottom exit doorway
-    { x: 1400, y: 1930, width: 450, height: 100 },// Stage Screen obstacle
+
 
     // --- Chill Room Walls (FIXED ENTRANCE DOORWAY) ---
     { x: 2180, y: 1860, width: 140, height: 30 },
@@ -175,7 +175,7 @@ export class GameMap {
    */
   public static checkCollision(x: number, y: number, radius: number = 18): boolean {
     if (x - radius < 60 || x + radius > this.MAP_WIDTH - 60 ||
-        y - radius < 60 || y + radius > this.MAP_HEIGHT - 60) {
+      y - radius < 60 || y + radius > this.MAP_HEIGHT - 60) {
       return true;
     }
 
@@ -199,7 +199,7 @@ export class GameMap {
   public static getCurrentRoom(x: number, y: number): string {
     for (const room of this.ROOMS) {
       if (x >= room.x && x <= room.x + room.width &&
-          y >= room.y && y <= room.y + room.height) {
+        y >= room.y && y <= room.y + room.height) {
         return room.name;
       }
     }
