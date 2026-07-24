@@ -14,18 +14,49 @@ const io = new Server(httpServer, {
   }
 });
 
+// Default Public Rooms
+const PUBLIC_ROOMS = ['ROOM-1', 'ROOM-2', 'ROOM-3'];
+
 // Rooms storage: roomId -> Map<socketId, Player>
 const rooms = new Map();
+
+// Initialize public rooms
+PUBLIC_ROOMS.forEach((id) => rooms.set(id, new Map()));
+
+function getPublicRoomsData() {
+  return PUBLIC_ROOMS.map((id) => ({
+    id,
+    name: id.replace('-', ' Server '),
+    count: rooms.has(id) ? rooms.get(id).size : 0,
+    maxPlayers: 10
+  }));
+}
+
+function broadcastPublicRooms() {
+  io.emit('public_rooms_update', getPublicRoomsData());
+}
 
 io.on('connection', (socket) => {
   console.log(`[Connect] Socket ID: ${socket.id}`);
   let currentRoomId = null;
 
-  // Send socket id back to client
   socket.emit('socket_id', socket.id);
+  socket.emit('public_rooms_update', getPublicRoomsData());
+
+  socket.on('get_public_rooms', () => {
+    socket.emit('public_rooms_update', getPublicRoomsData());
+  });
 
   socket.on('join_room', ({ player, roomId }) => {
-    currentRoomId = roomId || 'LOBBY-001';
+    // Leave previous room if any
+    if (currentRoomId && rooms.has(currentRoomId)) {
+      const prevRoom = rooms.get(currentRoomId);
+      prevRoom.delete(socket.id);
+      socket.to(currentRoomId).emit('player_left', socket.id);
+      socket.leave(currentRoomId);
+    }
+
+    currentRoomId = roomId || 'ROOM-1';
     socket.join(currentRoomId);
 
     if (!rooms.has(currentRoomId)) {
@@ -36,12 +67,15 @@ io.on('connection', (socket) => {
     const fullPlayer = { ...player, id: socket.id };
     roomPlayers.set(socket.id, fullPlayer);
 
-    // Send existing room players to joined user
+    // Send existing room state to joined user
     socket.emit('room_state', Array.from(roomPlayers.values()));
 
     // Broadcast new player to room
     socket.to(currentRoomId).emit('player_joined', fullPlayer);
     console.log(`[Join] ${fullPlayer.name} (${socket.id}) joined room ${currentRoomId}`);
+
+    // Update public room counts
+    broadcastPublicRooms();
   });
 
   socket.on('update_position', ({ position, facingAngle }) => {
@@ -97,9 +131,10 @@ io.on('connection', (socket) => {
       const roomPlayers = rooms.get(currentRoomId);
       roomPlayers.delete(socket.id);
       socket.to(currentRoomId).emit('player_left', socket.id);
-      if (roomPlayers.size === 0) {
+      if (roomPlayers.size === 0 && !PUBLIC_ROOMS.includes(currentRoomId)) {
         rooms.delete(currentRoomId);
       }
+      broadcastPublicRooms();
     }
   });
 });

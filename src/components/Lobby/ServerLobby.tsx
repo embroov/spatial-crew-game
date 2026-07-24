@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, Play, Users, Volume2, Shield, Radio } from 'lucide-react';
+import { Mic, Play, Users, Volume2, Shield, Radio, Server, Lock, Globe } from 'lucide-react';
 import type { SpatialAudioEngine } from '../../engine/SpatialAudioEngine';
+import type { PublicRoomInfo } from '../../services/SocketService';
 
 interface ServerLobbyProps {
   onJoin: (name: string, color: string, roomCode: string) => void;
   audioEngine: SpatialAudioEngine;
+  publicRooms: PublicRoomInfo[];
 }
 
 const AVATAR_COLORS = [
@@ -20,10 +22,15 @@ const AVATAR_COLORS = [
   { name: 'White', hex: '#f8fafc' },
 ];
 
-export const ServerLobby: React.FC<ServerLobbyProps> = ({ onJoin, audioEngine }) => {
+export const ServerLobby: React.FC<ServerLobbyProps> = ({ onJoin, audioEngine, publicRooms }) => {
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState('#84cc16');
-  const [roomCode, setRoomCode] = useState('LOBBY-001');
+  
+  // Server Selection Mode: 'public' | 'private'
+  const [serverMode, setServerMode] = useState<'public' | 'private'>('public');
+  const [selectedPublicRoom, setSelectedPublicRoom] = useState('ROOM-1');
+  const [privateRoomCode, setPrivateRoomCode] = useState('');
+
   const [micTesting, setMicTesting] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [isMicGranted, setIsMicGranted] = useState<boolean | null>(null);
@@ -50,8 +57,21 @@ export const ServerLobby: React.FC<ServerLobbyProps> = ({ onJoin, audioEngine })
     if (isMicGranted === null) {
       await audioEngine.initAudio();
     }
-    onJoin(name.trim(), selectedColor, roomCode.trim().toUpperCase());
+
+    const finalRoomCode = serverMode === 'public' 
+      ? selectedPublicRoom 
+      : (privateRoomCode.trim().toUpperCase() || 'PRIVATE-001');
+
+    onJoin(name.trim(), selectedColor, finalRoomCode);
   };
+
+  const defaultPublicRooms: PublicRoomInfo[] = [
+    { id: 'ROOM-1', name: 'Public Server 1', count: 0, maxPlayers: 10 },
+    { id: 'ROOM-2', name: 'Public Server 2', count: 0, maxPlayers: 10 },
+    { id: 'ROOM-3', name: 'Public Server 3', count: 0, maxPlayers: 10 },
+  ];
+
+  const activePublicRooms = publicRooms.length > 0 ? publicRooms : defaultPublicRooms;
 
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col items-center justify-start p-3 sm:p-6 py-6 sm:py-8 font-sans relative overflow-y-auto">
@@ -71,28 +91,43 @@ export const ServerLobby: React.FC<ServerLobbyProps> = ({ onJoin, audioEngine })
             SPATIAL CREW
           </h1>
           <p className="text-slate-400 text-xs mt-1">
-            Join the Among Us style server map with real-time proximity voice chat! Walk closer to speak with crewmates.
+            Join a server room to talk with people for fun! Walk closer to speak with crewmates.
           </p>
         </div>
 
         <form onSubmit={handleJoin} className="space-y-4">
-          {/* Avatar Dot Preview */}
+          {/* 2D Character Avatar Preview */}
           <div className="flex flex-col items-center justify-center gap-1.5 py-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
             <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-              Avatar Dot Preview
+              2D Character Avatar Preview
             </div>
 
-            <div className="relative flex items-center justify-center">
-              <div className="w-12 h-12 rounded-full border-2 border-dashed border-blue-400/40 animate-[spin_10s_linear_infinite] flex items-center justify-center" />
+            <div className="relative flex items-center justify-center h-16 w-16">
+              {/* Outer ring */}
+              <div className="absolute w-14 h-14 rounded-full border-2 border-dashed border-blue-400/40 animate-[spin_10s_linear_infinite]" />
               
-              <div 
-                className="absolute w-8 h-8 rounded-full shadow-lg flex items-center justify-center transition-all duration-300"
-                style={{ 
-                  backgroundColor: selectedColor,
-                  boxShadow: `0 0 16px ${selectedColor}80` 
-                }}
-              >
-                <div className="w-4.5 h-2.5 rounded-full bg-sky-200/90 border border-slate-900 shadow-inner" />
+              {/* 2D Character Figure */}
+              <div className="relative z-10 flex flex-col items-center">
+                {/* Head */}
+                <div 
+                  className="w-5 h-5 rounded-full border border-white flex items-center justify-center shadow-md relative"
+                  style={{ backgroundColor: selectedColor }}
+                >
+                  {/* Visor */}
+                  <div className="w-2.5 h-1.5 rounded-full bg-sky-200 border border-slate-800 absolute right-0.5 top-1.5" />
+                </div>
+                {/* Torso */}
+                <div 
+                  className="w-6 h-5 rounded-md border border-white mt-0.5 relative shadow-sm"
+                  style={{ backgroundColor: selectedColor }}
+                >
+                  <div className="w-3 h-2 bg-white/20 mx-auto mt-0.5 rounded-sm" />
+                </div>
+                {/* Legs */}
+                <div className="flex gap-1 -mt-0.5">
+                  <div className="w-1.5 h-2.5 bg-slate-900 rounded-b" />
+                  <div className="w-1.5 h-2.5 bg-slate-900 rounded-b" />
+                </div>
               </div>
             </div>
 
@@ -120,7 +155,7 @@ export const ServerLobby: React.FC<ServerLobbyProps> = ({ onJoin, audioEngine })
           {/* Color Selector */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Select Dot Color
+              Select Suit Color
             </label>
             <div className="grid grid-cols-5 gap-1.5">
               {AVATAR_COLORS.map((c) => (
@@ -140,29 +175,97 @@ export const ServerLobby: React.FC<ServerLobbyProps> = ({ onJoin, audioEngine })
             </div>
           </div>
 
-          {/* Server Room Code */}
+          {/* SERVER SELECTION SYSTEM */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Server Room Code
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                placeholder="LOBBY-001"
-                maxLength={10}
-                required
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-100 tracking-wider font-mono uppercase placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setRoomCode(`ROOM-${Math.floor(100 + Math.random() * 900)}`)}
-                className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium text-xs transition-colors border border-slate-700 shrink-0 cursor-pointer"
-              >
-                Random
-              </button>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Server className="w-3.5 h-3.5 text-blue-400" />
+                Select Server Room
+              </label>
+
+              {/* Server Mode Switcher Tabs */}
+              <div className="flex bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setServerMode('public')}
+                  className={`px-2 py-0.5 rounded-md font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    serverMode === 'public'
+                      ? 'bg-blue-600 text-white shadow'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Globe className="w-3 h-3" /> Public
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setServerMode('private')}
+                  className={`px-2 py-0.5 rounded-md font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    serverMode === 'private'
+                      ? 'bg-purple-600 text-white shadow'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Lock className="w-3 h-3" /> Private
+                </button>
+              </div>
             </div>
+
+            {serverMode === 'public' ? (
+              /* Public Server Room List */
+              <div className="space-y-1.5">
+                {activePublicRooms.map((room) => {
+                  const isSelected = selectedPublicRoom === room.id;
+                  return (
+                    <button
+                      key={room.id}
+                      type="button"
+                      onClick={() => setSelectedPublicRoom(room.id)}
+                      className={`w-full p-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600/20 border-blue-500/60 text-blue-300 ring-1 ring-blue-500/40 shadow-lg'
+                          : 'bg-slate-950/80 border-slate-800/80 text-slate-300 hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
+                        <span className="font-mono font-bold tracking-wide">{room.id}</span>
+                        <span className="text-[10px] text-slate-400">({room.name})</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <Users className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="font-bold text-slate-200">{room.count}</span>
+                        <span className="text-slate-500">/ 10 Online</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Private Lobby Option */
+              <div className="space-y-2 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={privateRoomCode}
+                    onChange={(e) => setPrivateRoomCode(e.target.value.toUpperCase())}
+                    placeholder="Enter Private Room Code (e.g. LOBBY-99)"
+                    maxLength={14}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 tracking-wider font-mono uppercase placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPrivateRoomCode(`PRIV-${Math.floor(100 + Math.random() * 900)}`)}
+                    className="px-3 bg-purple-900/40 hover:bg-purple-800/60 text-purple-300 rounded-xl font-medium text-xs transition-colors border border-purple-700/50 shrink-0 cursor-pointer"
+                  >
+                    Generate
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 text-center">
+                  Share this private code with your friends to hang out in your own private room!
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Mic Testing Section */}
@@ -210,14 +313,14 @@ export const ServerLobby: React.FC<ServerLobbyProps> = ({ onJoin, audioEngine })
             className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 text-sm cursor-pointer"
           >
             <Play className="w-4.5 h-4.5 fill-current" />
-            ENTER GAME SERVER
+            JOIN {serverMode === 'public' ? selectedPublicRoom : (privateRoomCode || 'PRIVATE LOBBY')}
           </button>
         </form>
 
         {/* Footer info */}
         <div className="mt-3 text-center text-[10px] text-slate-500 flex items-center justify-center gap-4">
           <span className="flex items-center gap-1">
-            <Shield className="w-3 h-3 text-slate-400" /> Spatial Audio
+            <Shield className="w-3 h-3 text-slate-400" /> Spatial Voice
           </span>
           <span className="flex items-center gap-1">
             <Users className="w-3 h-3 text-slate-400" /> WASD Controls

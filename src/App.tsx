@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Player, ChatMessage, EmoteNotification, Position } from './types/game';
 import { GameMap } from './engine/GameMap';
 import { SpatialAudioEngine } from './engine/SpatialAudioEngine';
-import { SocketService } from './services/SocketService';
+import { SocketService, type PublicRoomInfo } from './services/SocketService';
 import { ServerLobby } from './components/Lobby/ServerLobby';
 import { GameCanvas } from './components/Game/GameCanvas';
 import { AudioControlsBar } from './components/UI/AudioControlsBar';
@@ -11,8 +11,11 @@ import { ChatAndPlayers } from './components/UI/ChatAndPlayers';
 
 export function App() {
   const [inGame, setInGame] = useState(false);
-  const [roomCode, setRoomCode] = useState('LOBBY-001');
+  const [roomCode, setRoomCode] = useState('ROOM-1');
   const [showAudioRadius, setShowAudioRadius] = useState(true);
+
+  // Public server rooms list with live player counts
+  const [publicRooms, setPublicRooms] = useState<PublicRoomInfo[]>([]);
 
   // UI state for hotkeys
   const [chatOpen, setChatOpen] = useState(false);
@@ -22,13 +25,13 @@ export function App() {
   const [localPlayer, setLocalPlayer] = useState<Player>({
     id: Math.random().toString(36).substring(2, 9),
     name: 'Crewmate',
-    color: '#3b82f6',
+    color: '#84cc16',
     position: { ...GameMap.SPAWN_POS },
     facingAngle: 0,
     isMuted: false,
     isTalking: false,
     audioVolume: 0,
-    room: 'Cafeteria',
+    room: 'Grand Plaza',
   });
 
   const [players, setPlayers] = useState<Player[]>([]);
@@ -49,10 +52,15 @@ export function App() {
   };
 
   useEffect(() => {
-    // Dynamic server URL from Vercel environment variable VITE_SERVER_URL or local fallback
     const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
     
     socketServiceRef.current.setAudioEngine(audioEngineRef.current);
+    socketServiceRef.current.setEventHandlers({
+      onPublicRoomsUpdate: (roomsList) => {
+        setPublicRooms(roomsList);
+      },
+    });
+
     socketServiceRef.current.connect(SERVER_URL);
 
     audioEngineRef.current.setTalkingCallback((isTalking, volume) => {
@@ -116,6 +124,9 @@ export function App() {
     setLocalPlayer(newLocalPlayer);
 
     socketServiceRef.current.setEventHandlers({
+      onPublicRoomsUpdate: (roomsList) => {
+        setPublicRooms(roomsList);
+      },
       onPlayersUpdate: (updatedPlayers) => {
         setPlayers(updatedPlayers);
       },
@@ -159,6 +170,7 @@ export function App() {
         <ServerLobby
           onJoin={handleJoinGame}
           audioEngine={audioEngineRef.current}
+          publicRooms={publicRooms}
         />
       ) : (
         <div className="relative w-full h-full">

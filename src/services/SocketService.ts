@@ -2,12 +2,20 @@ import { io, Socket } from 'socket.io-client';
 import type { Player, Position, ChatMessage, EmoteNotification } from '../types/game';
 import type { SpatialAudioEngine } from '../engine/SpatialAudioEngine';
 
+export interface PublicRoomInfo {
+  id: string;
+  name: string;
+  count: number;
+  maxPlayers: number;
+}
+
 export type NetworkEventHandler = {
   onPlayersUpdate?: (players: Player[]) => void;
   onPlayerJoined?: (player: Player) => void;
   onPlayerLeft?: (id: string) => void;
   onChatMessage?: (msg: ChatMessage) => void;
   onEmoteReceived?: (emote: EmoteNotification) => void;
+  onPublicRoomsUpdate?: (rooms: PublicRoomInfo[]) => void;
 };
 
 export class SocketService {
@@ -17,7 +25,7 @@ export class SocketService {
   private peerConnections: Map<string, RTCPeerConnection> = new Map();
   private audioEngine: SpatialAudioEngine | null = null;
   private handlers: NetworkEventHandler = {};
-  private roomId: string = 'LOBBY-001';
+  private roomId: string = 'ROOM-1';
 
   private iceServers: RTCConfiguration = {
     iceServers: [
@@ -41,7 +49,6 @@ export class SocketService {
 
         this.socket.on('socket_id', (id: string) => {
           if (this.localPlayer) {
-            // Update local player ID to match server socket ID to prevent duplicates
             const oldId = this.localPlayer.id;
             this.playersMap.delete(oldId);
             this.localPlayer.id = id;
@@ -52,6 +59,7 @@ export class SocketService {
         this.socket.on('connect', () => {
           console.log('Connected to Socket.io Server:', this.socket?.id);
           this.registerSocketEvents();
+          this.socket?.emit('get_public_rooms');
           resolve(true);
         });
 
@@ -69,13 +77,18 @@ export class SocketService {
   private registerSocketEvents() {
     if (!this.socket) return;
 
+    this.socket.on('public_rooms_update', (roomsList: PublicRoomInfo[]) => {
+      if (this.handlers.onPublicRoomsUpdate) {
+        this.handlers.onPublicRoomsUpdate(roomsList);
+      }
+    });
+
     this.socket.on('room_state', (playersList: Player[]) => {
       this.playersMap.clear();
 
       playersList.forEach((p) => {
         this.playersMap.set(p.id, p);
 
-        // Initiate WebRTC peer connection for existing players
         if (this.localPlayer && p.id !== this.localPlayer.id) {
           this.initiateWebRTCConnection(p.id, true);
         }
@@ -157,7 +170,6 @@ export class SocketService {
     const pc = new RTCPeerConnection(this.iceServers);
     this.peerConnections.set(peerId, pc);
 
-    // Add local microphone tracks to peer connection
     const localStream = this.audioEngine?.getLocalStream();
     if (localStream) {
       localStream.getTracks().forEach((track) => {
@@ -165,7 +177,6 @@ export class SocketService {
       });
     }
 
-    // Handle remote audio stream arrival
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0] && this.audioEngine) {
         console.log(`[WebRTC] Received remote audio stream from peer ${peerId}`);
@@ -173,7 +184,6 @@ export class SocketService {
       }
     };
 
-    // Handle ICE Candidate transmission
     pc.onicecandidate = (event) => {
       if (event.candidate && this.socket) {
         this.socket.emit('webrtc_signal', {
@@ -183,7 +193,6 @@ export class SocketService {
       }
     };
 
-    // Create WebRTC SDP offer if initiator
     if (isOfferInitiator) {
       try {
         const offer = await pc.createOffer();
@@ -243,7 +252,7 @@ export class SocketService {
 
   // --- Public API ---
 
-  public joinRoom(player: Player, roomCode: string = 'LOBBY-001') {
+  public joinRoom(player: Player, roomCode: string = 'ROOM-1') {
     this.roomId = roomCode;
     this.playersMap.clear();
 

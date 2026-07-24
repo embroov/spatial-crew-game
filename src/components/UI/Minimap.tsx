@@ -34,7 +34,7 @@ export const Minimap: React.FC<MinimapProps> = ({ localPlayer, players, isOpen, 
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Map className="w-3.5 h-3.5 text-blue-400" />
-              Cyber Plaza Radar (4000x2800)
+              Cyber Plaza Radar
             </span>
             <button
               type="button"
@@ -47,21 +47,12 @@ export const Minimap: React.FC<MinimapProps> = ({ localPlayer, players, isOpen, 
           </div>
 
           <div className="relative w-[280px] h-[196px] bg-slate-950 rounded-xl border border-slate-800 overflow-hidden mx-auto">
-            {/* Draw Social Lounge Zones */}
-            {GameMap.ROOMS.map((rm) => (
-              <div
-                key={rm.name}
-                className="absolute border border-slate-800/80 bg-blue-900/10 flex items-center justify-center text-[7px] font-bold text-slate-500 overflow-hidden leading-none p-0.5 text-center"
-                style={{
-                  left: `${rm.x * scaleX}px`,
-                  top: `${rm.y * scaleY}px`,
-                  width: `${rm.width * scaleX}px`,
-                  height: `${rm.height * scaleY}px`,
-                }}
-              >
-                {rm.name}
-              </div>
-            ))}
+            {/* Custom Map Texture Background */}
+            <img 
+              src="/map.jpg" 
+              alt="Cyber Plaza Map"
+              className="absolute inset-0 w-full h-full object-cover opacity-90" 
+            />
 
             {/* Render Player Dots */}
             {players.map((p) => {
@@ -74,7 +65,7 @@ export const Minimap: React.FC<MinimapProps> = ({ localPlayer, players, isOpen, 
                   key={p.id}
                   className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border shadow-sm transition-all duration-100 ${
                     isMe
-                      ? 'w-3 h-3 bg-white border-blue-500 z-10 animate-pulse ring-2 ring-blue-500/40'
+                      ? 'w-3.5 h-3.5 bg-white border-blue-500 z-10 animate-pulse ring-2 ring-blue-500/60'
                       : 'w-2.5 h-2.5 border-slate-950'
                   }`}
                   style={{
