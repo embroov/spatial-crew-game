@@ -47,12 +47,21 @@ export const Minimap: React.FC<MinimapProps> = ({ localPlayer, players, isOpen, 
           </div>
 
           <div className="relative w-[280px] h-[196px] bg-slate-950 rounded-xl border border-slate-800 overflow-hidden mx-auto">
-            {/* Custom Map Texture Background */}
-            <img 
-              src="/map.jpg" 
-              alt="Cyber Plaza Map"
-              className="absolute inset-0 w-full h-full object-cover opacity-90" 
-            />
+            {/* Draw Vector Room Outlines */}
+            {GameMap.ROOMS.map((rm) => (
+              <div
+                key={rm.name}
+                className="absolute border border-slate-800/80 bg-blue-900/10 flex items-center justify-center text-[7px] font-bold text-slate-500 overflow-hidden leading-none p-0.5 text-center"
+                style={{
+                  left: `${rm.x * scaleX}px`,
+                  top: `${rm.y * scaleY}px`,
+                  width: `${rm.width * scaleX}px`,
+                  height: `${rm.height * scaleY}px`,
+                }}
+              >
+                {rm.name}
+              </div>
+            ))}
 
             {/* Render Player Dots */}
             {players.map((p) => {

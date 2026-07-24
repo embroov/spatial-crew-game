@@ -28,19 +28,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const angleRef = useRef<number>(localPlayer.facingAngle);
   const keysRef = useRef<{ [key: string]: boolean }>({});
   const walkDistanceRef = useRef<number>(0);
-  const mapImageRef = useRef<HTMLImageElement | null>(null);
 
   const [currentRoom, setCurrentRoom] = useState<string>('Grand Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
-
-  // Load custom map image texture
-  useEffect(() => {
-    const img = new Image();
-    img.src = '/map.jpg';
-    img.onload = () => {
-      mapImageRef.current = img;
-    };
-  }, []);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -168,10 +158,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const width = (canvas.width = window.innerWidth);
           const height = (canvas.height = window.innerHeight);
 
-          // Enable High-Quality Crisp Image Smoothing
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-
           ctx.fillStyle = '#030712';
           ctx.fillRect(0, 0, width, height);
 
@@ -181,17 +167,60 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.save();
           ctx.translate(camX, camY);
 
-          // Draw High-Resolution 2D Cyber Plaza Map Texture
-          if (mapImageRef.current) {
-            ctx.drawImage(mapImageRef.current, 0, 0, GameMap.MAP_WIDTH, GameMap.MAP_HEIGHT);
-          } else {
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, 0, GameMap.MAP_WIDTH, GameMap.MAP_HEIGHT);
+          // Grid Background
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 1;
+          const gridSize = 100;
+          for (let x = 0; x < GameMap.MAP_WIDTH; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, GameMap.MAP_HEIGHT);
+            ctx.stroke();
+          }
+          for (let y = 0; y < GameMap.MAP_HEIGHT; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(GameMap.MAP_WIDTH, y);
+            ctx.stroke();
+          }
 
-            for (const room of GameMap.ROOMS) {
-              ctx.fillStyle = room.color;
-              ctx.fillRect(room.x, room.y, room.width, room.height);
-            }
+          // Render Vector Rooms Floor & Boundaries
+          for (const room of GameMap.ROOMS) {
+            ctx.fillStyle = room.color;
+            ctx.fillRect(room.x, room.y, room.width, room.height);
+
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(room.x, room.y, room.width, room.height);
+
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+            ctx.font = 'bold 24px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(room.name.toUpperCase(), room.x + room.width / 2, room.y + room.height / 2);
+          }
+
+          // Central Fountain Monument
+          ctx.beginPath();
+          ctx.arc(2000, 1180, 80, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+          ctx.fill();
+          ctx.strokeStyle = '#60a5fa';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          ctx.fillStyle = '#93c5fd';
+          ctx.font = 'bold 14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('✨ Central Fountain ✨', 2000, 1185);
+
+          // Wall Partitions
+          for (const wall of GameMap.WALLS) {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
           }
 
           // Spatial Audio Proximity Range Ring
