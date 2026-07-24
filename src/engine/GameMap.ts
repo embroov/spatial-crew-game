@@ -1,7 +1,7 @@
 import type { MapWall, MapRoomZone, Position } from '../types/game';
 
 export class GameMap {
-  // Map Dimensions matched to the Custom Cyber Plaza Map Image
+  // High-Resolution Map Dimensions matching custom Cyber Plaza image ratio (4000 x 2800)
   public static readonly MAP_WIDTH = 4000;
   public static readonly MAP_HEIGHT = 2800;
 
@@ -31,14 +31,14 @@ export class GameMap {
       x: 1100,
       y: 640,
       width: 1800,
-      height: 1110,
+      height: 1180,
       color: "rgba(59, 130, 246, 0.15)"
     },
     {
       name: "Lounge Bar",
       x: 140,
       y: 680,
-      width: 980,
+      width: 950,
       height: 640,
       color: "rgba(168, 85, 247, 0.15)"
     },
@@ -92,7 +92,7 @@ export class GameMap {
     }
   ];
 
-  // Walls & Solid Obstacles matching the image structure
+  // Walls & Solid Obstacles matching exact image graphic doorways
   public static readonly WALLS: MapWall[] = [
     // Outer Border Boundaries
     { x: 0, y: 0, width: 4000, height: 60 },
@@ -104,57 +104,60 @@ export class GameMap {
     { x: 520, y: 140, width: 30, height: 460 },
     { x: 1450, y: 140, width: 30, height: 460 },
     { x: 520, y: 570, width: 380, height: 30 },
-    { x: 1100, y: 570, width: 380, height: 30 }, // Entrance doorway (900..1100)
+    { x: 1100, y: 570, width: 380, height: 30 }, // Stairs entrance doorway
 
     // --- Rooftop Walls ---
     { x: 2480, y: 140, width: 30, height: 460 },
     { x: 3420, y: 140, width: 30, height: 460 },
     { x: 2480, y: 570, width: 380, height: 30 },
-    { x: 3060, y: 570, width: 390, height: 30 }, // Entrance doorway (2860..3060)
+    { x: 3060, y: 570, width: 390, height: 30 }, // Stairs entrance doorway
 
     // --- Lounge Bar Walls ---
-    { x: 140, y: 680, width: 980, height: 30 },
-    { x: 140, y: 680, width: 30, height: 640 },
-    { x: 140, y: 1290, width: 980, height: 30 },
-    { x: 1090, y: 680, width: 30, height: 200 },
-    { x: 1090, y: 1050, width: 30, height: 270 }, // Plaza doorway (880..1050)
-    { x: 300, y: 780, width: 500, height: 70 },   // Bar Counter
+    { x: 140, y: 680, width: 950, height: 30 }, // Solid top wall
+    { x: 140, y: 680, width: 30, height: 640 }, // Solid left wall
+    { x: 140, y: 1290, width: 950, height: 30 },// Bottom wall
+    { x: 1060, y: 680, width: 30, height: 160 }, // Right wall top portion
+    { x: 1060, y: 1120, width: 30, height: 200 },// Right wall bottom portion (Wide Doorway at Y: 840..1120 aligned with pink neon arrows!)
+    { x: 300, y: 780, width: 500, height: 70 },  // Bar Counter obstacle
 
     // --- DJ Stage Walls ---
     { x: 2880, y: 680, width: 980, height: 30 },
     { x: 3830, y: 680, width: 30, height: 680 },
     { x: 2880, y: 1330, width: 980, height: 30 },
-    { x: 2880, y: 680, width: 30, height: 200 },
-    { x: 2880, y: 1050, width: 30, height: 310 }, // Plaza doorway (880..1050)
-    { x: 3200, y: 730, width: 450, height: 90 },  // DJ Booth Stage
+    { x: 2880, y: 680, width: 30, height: 160 },
+    { x: 2880, y: 1120, width: 30, height: 240 }, // Wide Doorway at Y: 840..1120 aligned with pink neon arrows!
+    { x: 3200, y: 730, width: 450, height: 90 },  // DJ Stage obstacle
 
     // --- Game Room Walls ---
     { x: 140, y: 1400, width: 940, height: 30 },
     { x: 140, y: 1400, width: 30, height: 700 },
     { x: 140, y: 2070, width: 940, height: 30 },
-    { x: 1050, y: 1400, width: 30, height: 250 },
-    { x: 1050, y: 1820, width: 30, height: 280 }, // Doorway (1650..1820)
+    { x: 1050, y: 1400, width: 30, height: 160 },
+    { x: 1050, y: 1820, width: 30, height: 280 }, // Doorway (1560..1820)
     { x: 450, y: 1650, width: 300, height: 150 }, // Pool Table
 
-    // --- Event Hall Walls ---
-    { x: 1100, y: 1860, width: 1050, height: 30 },
+    // --- Event Hall Walls (FIXED ENTRANCE DOORWAY) ---
+    { x: 1100, y: 1860, width: 320, height: 30 },
+    { x: 1780, y: 1860, width: 370, height: 30 }, // OPEN ENTRANCE DOORWAY at X: 1420..1780 (Blue neon arrows!)
     { x: 1100, y: 1860, width: 30, height: 660 },
     { x: 2120, y: 1860, width: 30, height: 660 },
-    { x: 1100, y: 2490, width: 400, height: 30 },
-    { x: 1750, y: 2490, width: 400, height: 30 }, // Bottom exit doorway
-    { x: 1400, y: 1930, width: 450, height: 100 },// Stage Screen
+    { x: 1100, y: 2490, width: 320, height: 30 },
+    { x: 1780, y: 2490, width: 370, height: 30 }, // Bottom exit doorway
+    { x: 1400, y: 1930, width: 450, height: 100 },// Stage Screen obstacle
 
-    // --- Chill Room Walls ---
-    { x: 2180, y: 1860, width: 720, height: 30 },
+    // --- Chill Room Walls (FIXED ENTRANCE DOORWAY) ---
+    { x: 2180, y: 1860, width: 140, height: 30 },
+    { x: 2680, y: 1860, width: 220, height: 30 }, // OPEN ENTRANCE DOORWAY at X: 2320..2680 (Green neon arrows!)
     { x: 2180, y: 1860, width: 30, height: 660 },
     { x: 2870, y: 1860, width: 30, height: 660 },
-    { x: 2180, y: 2490, width: 720, height: 30 },
+    { x: 2180, y: 2490, width: 140, height: 30 },
+    { x: 2680, y: 2490, width: 220, height: 30 }, // Bottom exit doorway
 
     // --- Cafe Walls ---
     { x: 2920, y: 1440, width: 940, height: 30 },
     { x: 3830, y: 1440, width: 30, height: 600 },
-    { x: 2920, y: 1440, width: 30, height: 180 },
-    { x: 2920, y: 1800, width: 30, height: 240 }, // Doorway (1620..1800)
+    { x: 2920, y: 1440, width: 30, height: 120 },
+    { x: 2920, y: 1800, width: 30, height: 240 }, // Left Doorway at Y: 1560..1800 (Orange neon arrows!)
     { x: 3100, y: 1520, width: 450, height: 70 }, // Coffee Counter
 
     // --- Voice Pods Walls ---
@@ -163,7 +166,7 @@ export class GameMap {
     { x: 3830, y: 2060, width: 30, height: 460 },
     { x: 2920, y: 2490, width: 940, height: 30 },
 
-    // Central Fountain Obstacle (Radius 80 around x:2000, y:1180)
+    // Central Fountain Obstacle
     { x: 1920, y: 1100, width: 160, height: 160 },
   ];
 

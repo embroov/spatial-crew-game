@@ -168,6 +168,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const width = (canvas.width = window.innerWidth);
           const height = (canvas.height = window.innerHeight);
 
+          // Enable High-Quality Crisp Image Smoothing
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+
           ctx.fillStyle = '#030712';
           ctx.fillRect(0, 0, width, height);
 
@@ -177,11 +181,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.save();
           ctx.translate(camX, camY);
 
-          // Draw Custom 2D Cyber Plaza Map Image Texture
+          // Draw High-Resolution 2D Cyber Plaza Map Texture
           if (mapImageRef.current) {
             ctx.drawImage(mapImageRef.current, 0, 0, GameMap.MAP_WIDTH, GameMap.MAP_HEIGHT);
           } else {
-            // Fallback grid & floor render if image is loading
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(0, 0, GameMap.MAP_WIDTH, GameMap.MAP_HEIGHT);
 
