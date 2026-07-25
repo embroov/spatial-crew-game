@@ -318,20 +318,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.drawImage(djStageImgRef.current, room.x, room.y, room.width, room.height);
               }
 
-              // Render Elevated DJ Stage Overlay Graphic in Upper Side with Soft Realistic Shadow
+              // Render Elevated DJ Stage Overlay Graphic in Upper Side
               if (djStageOverlayImgRef.current) {
                 const stgX = room.x + 250; // 3750
                 const stgY = room.y + 30;  // 1330
                 const stgW = 800;
                 const stgH = 480;
-
-                // Realistic Soft Stage Drop Shadow
-                ctx.save();
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                ctx.beginPath();
-                ctx.ellipse(stgX + stgW / 2 + 15, stgY + stgH / 2 + 25, stgW / 2 + 10, stgH / 2, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
 
                 // Stage Graphic
                 ctx.drawImage(djStageOverlayImgRef.current, stgX, stgY, stgW, stgH);
