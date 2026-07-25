@@ -20,6 +20,7 @@ export function App() {
   // UI state for hotkeys
   const [chatOpen, setChatOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [emoteOpen, setEmoteOpen] = useState(true);
   const [hideCursor, setHideCursor] = useState(false);
 
   const [localPlayer, setLocalPlayer] = useState<Player>({
@@ -79,7 +80,7 @@ export function App() {
     };
   }, []);
 
-  // Hotkey listener for '/' (Chat), 'M' (Map), 'U' (Mic), 'Escape'
+  // Global Hotkey listener for '/' (Chat), 'M' (Map), 'U' (Mic), 'E' (Emotes), 'Escape'
   useEffect(() => {
     if (!inGame) return;
 
@@ -90,21 +91,27 @@ export function App() {
       if (e.key === 'Escape') {
         setChatOpen(false);
         setMapOpen(false);
+        setEmoteOpen(false);
         (document.activeElement as HTMLElement)?.blur();
         return;
       }
 
       if (isInput) return; // Do not trigger hotkeys when typing in chat
 
-      if (e.key === '/') {
+      const key = e.key.toLowerCase();
+
+      if (key === '/') {
         e.preventDefault();
         setChatOpen((prev) => !prev);
-      } else if (e.key.toLowerCase() === 'm') {
+      } else if (key === 'm') {
         e.preventDefault();
         setMapOpen((prev) => !prev);
-      } else if (e.key.toLowerCase() === 'u') {
+      } else if (key === 'u') {
         e.preventDefault();
         handleToggleMute();
+      } else if (key === 'e') {
+        e.preventDefault();
+        setEmoteOpen((prev) => !prev);
       }
     };
 
@@ -129,13 +136,14 @@ export function App() {
       },
       onPlayersUpdate: (updatedPlayers) => {
         setPlayers((prevPlayers) => {
-          // Preserve unexpired activeEmote state
           const now = Date.now();
           return updatedPlayers.map((newP) => {
             const existing = prevPlayers.find((p) => p.id === newP.id);
-            return existing?.activeEmote && existing.activeEmote.expiresAt > now
-              ? { ...newP, activeEmote: existing.activeEmote }
-              : newP;
+            // Strict 3-second expiration check: clear if expiresAt <= now
+            if (existing?.activeEmote && existing.activeEmote.expiresAt > now) {
+              return { ...newP, activeEmote: existing.activeEmote };
+            }
+            return { ...newP, activeEmote: undefined };
           });
         });
       },
@@ -143,9 +151,11 @@ export function App() {
         setMessages((prev) => [...prev.slice(-49), msg]);
       },
       onEmoteReceived: (emote: EmoteNotification) => {
-        const expiresAt = Date.now() + 3000;
+        const now = Date.now();
+        const expiresAt = emote.emoji ? now + 3000 : 0;
+
         setPlayers((prev) =>
-          prev.map((p) => (p.id === emote.playerId ? { ...p, activeEmote: { emoji: emote.emoji, expiresAt } } : p))
+          prev.map((p) => (p.id === emote.playerId ? { ...p, activeEmote: emote.emoji ? { emoji: emote.emoji, expiresAt } : undefined } : p))
         );
       },
     });
@@ -169,11 +179,11 @@ export function App() {
 
   const handleSendEmote = (emoji: string) => {
     const now = Date.now();
-    const isSameEmoteActive =
-      localPlayer.activeEmote?.emoji === emoji && localPlayer.activeEmote.expiresAt > now;
+    const currentEmote = localPlayer.activeEmote;
+    const isSameActive = currentEmote && currentEmote.emoji === emoji && currentEmote.expiresAt > now;
 
-    if (isSameEmoteActive) {
-      // Toggle off / Stop emote if clicking same button again
+    if (isSameActive) {
+      // Toggle OFF: Clicked same emoji again -> CANCEL / STOP immediately
       setLocalPlayer((prev) => ({
         ...prev,
         activeEmote: undefined,
@@ -183,14 +193,16 @@ export function App() {
       );
       socketServiceRef.current.sendEmote('');
     } else {
-      // Start 3-second limited emote
+      // Start NEW 3-second emote
       const expiresAt = now + 3000;
+      const newEmoteObj = { emoji, expiresAt };
+
       setLocalPlayer((prev) => ({
         ...prev,
-        activeEmote: { emoji, expiresAt },
+        activeEmote: newEmoteObj,
       }));
       setPlayers((prev) =>
-        prev.map((p) => (p.id === localPlayer.id ? { ...p, activeEmote: { emoji, expiresAt } } : p))
+        prev.map((p) => (p.id === localPlayer.id ? { ...p, activeEmote: newEmoteObj } : p))
       );
       socketServiceRef.current.sendEmote(emoji);
     }
@@ -221,6 +233,8 @@ export function App() {
             hideCursor={hideCursor}
             onToggleHideCursor={() => setHideCursor((prev) => !prev)}
             onSendEmote={handleSendEmote}
+            showEmotePicker={emoteOpen}
+            onToggleEmotePicker={() => setEmoteOpen((prev) => !prev)}
           />
 
           {/* Minimap View */}

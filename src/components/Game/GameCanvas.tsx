@@ -13,6 +13,8 @@ interface GameCanvasProps {
   hideCursor: boolean;
   onToggleHideCursor: () => void;
   onSendEmote: (emoji: string) => void;
+  showEmotePicker: boolean;
+  onToggleEmotePicker: () => void;
 }
 
 const AVAILABLE_EMOTES = [
@@ -36,6 +38,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   hideCursor,
   onToggleHideCursor,
   onSendEmote,
+  showEmotePicker,
+  onToggleEmotePicker,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -49,7 +53,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const [currentRoom, setCurrentRoom] = useState<string>('Grand Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
-  const [showEmotePicker, setShowEmotePicker] = useState<boolean>(true);
 
   // Load custom high-res room images
   useEffect(() => {
@@ -85,7 +88,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     return () => window.removeEventListener('mousedown', handleMouseDown);
   }, [onToggleHideCursor]);
 
-  // WASD, Arrow Key, Shift Sprint & Emote Hotkeys listeners
+  // WASD, Arrow Key & Shift Sprint listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
@@ -106,11 +109,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       if (key === 'shift' || code === 'ShiftLeft' || code === 'ShiftRight') {
         setIsSprintingState(true);
-      }
-
-      if (key === 'e' || code === 'KeyE') {
-        e.preventDefault();
-        setShowEmotePicker((prev) => !prev);
       }
 
       // Number keys 1-9 for instant emote
@@ -298,6 +296,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
 
           // Render Players as 2D Animated Characters
+          const realTimeNow = Date.now();
           players.forEach((p) => {
             const isMe = p.id === localPlayer.id;
             const pX = isMe ? posRef.current.x : p.position.x;
@@ -307,9 +306,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const dist = Math.hypot(pX - posRef.current.x, pY - posRef.current.y);
             const inVoiceRange = dist <= config.maxDistance;
 
-            // Strict 3-second active emote limit check
+            // Strict 3-second active emote limit check against realTimeNow
             const activeEmoteObj = isMe ? localPlayer.activeEmote : p.activeEmote;
-            const activeEmote = activeEmoteObj && activeEmoteObj.expiresAt > now ? activeEmoteObj.emoji : undefined;
+            const activeEmote = activeEmoteObj && activeEmoteObj.expiresAt > realTimeNow ? activeEmoteObj.emoji : undefined;
 
             // Sprint Speed Trail Effect
             if (isMe && isSprinting && isMoving) {
@@ -350,7 +349,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               now
             );
 
-            // Floating Animated Emote Bubble (3-second limit with smooth bounce)
+            // Floating Animated Emote Bubble (Strict 3-second limit check)
             if (activeEmote) {
               const bubbleY = pY - 54;
               const bounce = Math.sin(now / 120) * 3;
@@ -454,7 +453,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 backdrop-blur-xl p-2 rounded-2xl shadow-2xl">
         <button
           type="button"
-          onClick={() => setShowEmotePicker((prev) => !prev)}
+          onClick={onToggleEmotePicker}
           className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
             showEmotePicker 
               ? 'bg-purple-600 border-purple-500 text-white shadow-lg' 
