@@ -128,13 +128,22 @@ export function App() {
         setPublicRooms(roomsList);
       },
       onPlayersUpdate: (updatedPlayers) => {
-        setPlayers(updatedPlayers);
+        setPlayers((prevPlayers) => {
+          // Preserve activeEmote state when positions update
+          return updatedPlayers.map((newP) => {
+            const existing = prevPlayers.find((p) => p.id === newP.id);
+            return existing?.activeEmote ? { ...newP, activeEmote: existing.activeEmote } : newP;
+          });
+        });
       },
       onChatMessage: (msg: ChatMessage) => {
         setMessages((prev) => [...prev.slice(-49), msg]);
       },
-      onEmoteReceived: (_emote: EmoteNotification) => {
-        // Rendered directly on Canvas
+      onEmoteReceived: (emote: EmoteNotification) => {
+        const expiresAt = Date.now() + 3500;
+        setPlayers((prev) =>
+          prev.map((p) => (p.id === emote.playerId ? { ...p, activeEmote: { emoji: emote.emoji, expiresAt } } : p))
+        );
       },
     });
 
@@ -156,6 +165,16 @@ export function App() {
   };
 
   const handleSendEmote = (emoji: string) => {
+    const expiresAt = Date.now() + 3500;
+    setLocalPlayer((prev) => ({
+      ...prev,
+      activeEmote: { emoji, expiresAt },
+    }));
+
+    setPlayers((prev) =>
+      prev.map((p) => (p.id === localPlayer.id ? { ...p, activeEmote: { emoji, expiresAt } } : p))
+    );
+
     socketServiceRef.current.sendEmote(emoji);
   };
 
@@ -183,6 +202,7 @@ export function App() {
             showAudioRadius={showAudioRadius}
             hideCursor={hideCursor}
             onToggleHideCursor={() => setHideCursor((prev) => !prev)}
+            onSendEmote={handleSendEmote}
           />
 
           {/* Minimap View */}

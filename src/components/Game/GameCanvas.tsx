@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Player, Position } from '../../types/game';
 import { GameMap } from '../../engine/GameMap';
 import type { SpatialAudioEngine } from '../../engine/SpatialAudioEngine';
+import { Smile } from 'lucide-react';
 
 interface GameCanvasProps {
   localPlayer: Player;
@@ -11,7 +12,20 @@ interface GameCanvasProps {
   showAudioRadius: boolean;
   hideCursor: boolean;
   onToggleHideCursor: () => void;
+  onSendEmote: (emoji: string) => void;
 }
+
+const AVAILABLE_EMOTES = [
+  { emoji: '👋', name: 'Wave' },
+  { emoji: '💃', name: 'Dance' },
+  { emoji: '❤️', name: 'Love' },
+  { emoji: '😂', name: 'Laugh' },
+  { emoji: '👍', name: 'Thumbs Up' },
+  { emoji: '🔥', name: 'Fire' },
+  { emoji: '⚡', name: 'Hype' },
+  { emoji: '👏', name: 'Clap' },
+  { emoji: '🎉', name: 'Party' },
+];
 
 export const GameCanvas: React.FC<GameCanvasProps> = ({
   localPlayer,
@@ -21,6 +35,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   showAudioRadius,
   hideCursor,
   onToggleHideCursor,
+  onSendEmote,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -34,6 +49,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const [currentRoom, setCurrentRoom] = useState<string>('Grand Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
+  const [showEmotePicker, setShowEmotePicker] = useState<boolean>(false);
 
   // Load custom high-res room images
   useEffect(() => {
@@ -69,7 +85,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     return () => window.removeEventListener('mousedown', handleMouseDown);
   }, [onToggleHideCursor]);
 
-  // WASD, Arrow Key & Shift Sprint listeners
+  // WASD, Arrow Key, Shift Sprint & Emote Hotkeys listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
@@ -91,6 +107,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       if (key === 'shift' || code === 'ShiftLeft' || code === 'ShiftRight') {
         setIsSprintingState(true);
       }
+
+      if (key === 'e') {
+        setShowEmotePicker((prev) => !prev);
+      }
+
+      // Number keys 1-9 for instant emote
+      if (/^[1-9]$/.test(key)) {
+        const index = parseInt(key, 10) - 1;
+        if (AVAILABLE_EMOTES[index]) {
+          onSendEmote(AVAILABLE_EMOTES[index].emoji);
+        }
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -111,7 +139,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
+  }, [onSendEmote]);
 
   // Main 60 FPS Game Loop
   useEffect(() => {
@@ -268,7 +296,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.stroke();
           }
 
-          // Render Players as 2D Animated Characters
+          // Render Players as 2D Animated Characters with Hands & Emotes
           players.forEach((p) => {
             const isMe = p.id === localPlayer.id;
             const pX = isMe ? posRef.current.x : p.position.x;
@@ -277,6 +305,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
             const dist = Math.hypot(pX - posRef.current.x, pY - posRef.current.y);
             const inVoiceRange = dist <= config.maxDistance;
+
+            const activeEmote = p.activeEmote && p.activeEmote.expiresAt > now ? p.activeEmote.emoji : undefined;
 
             // Sprint Speed Trail Effect
             if (isMe && isSprinting && isMoving) {
@@ -303,7 +333,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.stroke();
             }
 
-            // Draw Animated 2D Character Body
+            // Draw Animated 2D Character Body with Hands & Gesture
             draw2DCharacter(
               ctx,
               pX,
@@ -312,10 +342,37 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               p.color || '#3b82f6',
               isMe ? (isMoving ? (isSprinting ? 2.2 : 1.2) : 0) : 0.8,
               walkDistanceRef.current,
-              isMe
+              isMe,
+              activeEmote,
+              now
             );
 
-            // Mic Status Badge well ABOVE head (y - 42)
+            // Floating Animated Emote Bubble above character head
+            if (activeEmote) {
+              const bubbleY = pY - 64;
+              const bounce = Math.sin(now / 120) * 3;
+
+              ctx.save();
+              ctx.translate(pX, bubbleY + bounce);
+
+              // Glossy Emote Bubble
+              ctx.beginPath();
+              ctx.arc(0, 0, 18, 0, Math.PI * 2);
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+              ctx.fill();
+              ctx.strokeStyle = '#60a5fa';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+
+              // Emote Emoji Text
+              ctx.font = '18px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(activeEmote, 0, 6);
+
+              ctx.restore();
+            }
+
+            // Mic Status Badge (y - 42)
             const badgeY = pY - 42;
             ctx.fillStyle = p.isMuted ? '#ef4444' : p.isTalking ? '#10b981' : '#64748b';
             ctx.beginPath();
@@ -392,12 +449,53 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-blue-400 border border-slate-700">/</kbd> Chat</span>
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-blue-400 border border-slate-700">M</kbd> Map</span>
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-blue-400 border border-slate-700">U</kbd> Mic</span>
+          <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-purple-400 border border-slate-700">E</kbd> Emotes</span>
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-amber-400 border border-slate-700">MidClick</kbd> Hide Cursor</span>
         </div>
 
         <div className="px-3.5 py-2 bg-slate-900/80 border border-slate-800 backdrop-blur-md rounded-xl text-slate-200 text-xs font-medium shadow-lg flex items-center gap-2">
           <span className="text-slate-400">Zone:</span>
           <span className="font-bold text-emerald-400">📍 {currentRoom}</span>
+        </div>
+      </div>
+
+      {/* QUICK EMOTE PICKER HUD BAR (Bottom Center) */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 backdrop-blur-xl p-2 rounded-2xl shadow-2xl">
+        <button
+          type="button"
+          onClick={() => setShowEmotePicker((prev) => !prev)}
+          className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+            showEmotePicker 
+              ? 'bg-purple-600 border-purple-500 text-white shadow-lg' 
+              : 'bg-slate-800 hover:bg-slate-700 text-purple-300 border-slate-700'
+          }`}
+          title="Toggle Emote Menu (E)"
+        >
+          <Smile className="w-4 h-4 text-purple-300" />
+          <span className="hidden sm:inline">Emotes</span>
+          <kbd className="px-1 py-0.2 bg-slate-900 border border-slate-700 rounded text-[10px] font-mono text-purple-300">
+            E
+          </kbd>
+        </button>
+
+        {/* Expanded Emotes Buttons */}
+        <div className={`flex items-center gap-1.5 transition-all duration-200 ${
+          showEmotePicker ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none hidden sm:flex sm:opacity-100 sm:scale-100 sm:pointer-events-auto'
+        }`}>
+          {AVAILABLE_EMOTES.map((em, idx) => (
+            <button
+              key={em.name}
+              type="button"
+              onClick={() => onSendEmote(em.emoji)}
+              className="w-9 h-9 bg-slate-800/90 hover:bg-purple-600/30 hover:border-purple-500/60 active:scale-95 text-base rounded-xl border border-slate-700/80 flex items-center justify-center transition-all cursor-pointer relative group"
+              title={`${em.name} (Hotkey ${idx + 1})`}
+            >
+              <span>{em.emoji}</span>
+              <span className="absolute -top-6 text-[9px] font-mono font-bold bg-slate-950 text-slate-400 border border-slate-800 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                {idx + 1}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -466,8 +564,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 };
 
 /**
- * Custom 2D Character Renderer with leg walking/running cycle animations, 
- * torso suit, head visor, and directional facing
+ * Custom 2D Character Renderer with visible hands, stride sway, 
+ * active emote gestures (wave, dance, raise), torso suit, and head visor
  */
 function draw2DCharacter(
   ctx: CanvasRenderingContext2D,
@@ -477,10 +575,18 @@ function draw2DCharacter(
   color: string,
   speedFactor: number,
   totalDistance: number,
-  isLocal: boolean
+  isLocal: boolean,
+  activeEmote?: string,
+  now: number = 0
 ) {
   ctx.save();
   ctx.translate(x, y);
+
+  // Dance emote body sway
+  if (activeEmote === '💃') {
+    const danceOffset = Math.sin(now / 80) * 4;
+    ctx.translate(danceOffset, Math.abs(Math.sin(now / 100)) * -3);
+  }
 
   // 1. Oval Drop Shadow beneath feet
   ctx.beginPath();
@@ -521,14 +627,55 @@ function draw2DCharacter(
   ctx.fillStyle = '#1e293b';
   ctx.fillRect(-14, 6, 28, 4);
 
-  // 4. Character Head
+  // 4. VISIBLE HANDS & ARMS GESTURE ANIMATION
+  const armSway = speedFactor > 0 ? Math.sin(totalDistance * 0.08) * 5 : 0;
+
+  let leftHandY = -2 - armSway;
+  let rightHandY = -2 + armSway;
+  let rightHandX = 18;
+  let leftHandX = -18;
+
+  // Emote Gesture Overrides
+  if (activeEmote === '👋') {
+    // Wave Emote: Right hand raised up & waving
+    rightHandX = 16 + Math.sin(now / 70) * 6;
+    rightHandY = -22;
+  } else if (activeEmote === '💃') {
+    // Dance Emote: Both hands bopping up and down
+    leftHandY = -14 + Math.sin(now / 90) * 6;
+    rightHandY = -14 - Math.sin(now / 90) * 6;
+  } else if (activeEmote) {
+    // Celebration / Love / Thumbs Up / Fire / Hype / Clap: Both hands raised up
+    leftHandY = -16;
+    rightHandY = -16;
+  }
+
+  // Draw Left Hand (Globe)
+  ctx.beginPath();
+  ctx.arc(leftHandX, leftHandY, 5, 0, Math.PI * 2);
+  ctx.fillStyle = color || '#3b82f6';
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Draw Right Hand (Globe)
+  ctx.beginPath();
+  ctx.arc(rightHandX, rightHandY, 5, 0, Math.PI * 2);
+  ctx.fillStyle = color || '#3b82f6';
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 5. Character Head
   ctx.beginPath();
   ctx.arc(0, -18, 14, 0, Math.PI * 2);
   ctx.fillStyle = color || '#3b82f6';
   ctx.fill();
   ctx.stroke();
 
-  // 5. Glowing Head Visor (Oriented in Direction of Movement)
+  // 6. Glowing Head Visor (Oriented in Direction of Movement)
   const visorX = Math.cos(facingAngle) * 7;
   const visorY = -18 + Math.sin(facingAngle) * 7;
 

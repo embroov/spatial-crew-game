@@ -15,6 +15,10 @@ export interface Player {
   audioVolume: number; // 0 to 1 current mic input level
   room: string;
   hat?: string;
+  activeEmote?: {
+    emoji: string;
+    expiresAt: number;
+  };
 }
 
 export interface Room {
@@ -39,16 +43,6 @@ export interface MapRoomZone {
   width: number;
   height: number;
   color: string;
-}
-
-export interface MapTaskStation {
-  id: string;
-  name: string;
-  room: string;
-  x: number;
-  y: number;
-  type: 'download' | 'wiring' | 'engine' | 'medbay' | 'shields' | 'card_swipe';
-  completed?: boolean;
 }
 
 export interface ChatMessage {
