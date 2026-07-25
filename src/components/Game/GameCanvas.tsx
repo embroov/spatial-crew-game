@@ -50,14 +50,24 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const loungeBarImgRef = useRef<HTMLImageElement | null>(null);
   const gameRoomImgRef = useRef<HTMLImageElement | null>(null);
+  const djStageImgRef = useRef<HTMLImageElement | null>(null);
 
   const [currentRoom, setCurrentRoom] = useState<string>('Central Cyber Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
-  const [zoomScale, setZoomScale] = useState<number>(1.0); // Camera POV Zoom (0.5x to 1.6x)
+  const [zoomScale, setZoomScale] = useState<number>(1.0);
 
   const handleZoomIn = () => setZoomScale((prev) => Math.min(1.6, Math.round((prev + 0.15) * 100) / 100));
   const handleZoomOut = () => setZoomScale((prev) => Math.max(0.5, Math.round((prev - 0.15) * 100) / 100));
   const handleResetZoom = () => setZoomScale(1.0);
+
+  // Load custom room image graphics
+  useEffect(() => {
+    const imgDJ = new Image();
+    imgDJ.src = '/dj_stage.jpg';
+    imgDJ.onload = () => {
+      djStageImgRef.current = imgDJ;
+    };
+  }, []);
 
   // Sync position ref when local player joins or respawns
   useEffect(() => {
@@ -225,6 +235,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const width = (canvas.width = window.innerWidth);
           const height = (canvas.height = window.innerHeight);
 
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+
           ctx.fillStyle = '#030712';
           ctx.fillRect(0, 0, width, height);
 
@@ -258,36 +271,31 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.fillStyle = room.color;
             ctx.fillRect(room.x, room.y, room.width, room.height);
 
-            // Glowing Room Border Outline
-            ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(room.x, room.y, room.width, room.height);
+            // Render Custom High-Res Image for DJ Stage & Dance Floor
+            if (room.name === 'DJ Stage & Dance Floor' && djStageImgRef.current) {
+              ctx.drawImage(djStageImgRef.current, room.x, room.y, room.width, room.height);
+            } else {
+              // Glowing Room Border Outline
+              ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+              ctx.lineWidth = 3;
+              ctx.strokeRect(room.x, room.y, room.width, room.height);
 
-            // Room Title Label
-            ctx.fillStyle = 'rgba(226, 232, 240, 0.4)';
-            ctx.font = 'bold 28px system-ui, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(room.name.toUpperCase(), room.x + room.width / 2, room.y + 70);
+              // Room Title Label
+              ctx.fillStyle = 'rgba(226, 232, 240, 0.4)';
+              ctx.font = 'bold 28px system-ui, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(room.name.toUpperCase(), room.x + room.width / 2, room.y + 70);
 
-            // Distinct Room Floor Features
-            if (room.name === 'DJ Stage & Dance Floor') {
-              const tSize = 100;
-              for (let rx = room.x + 100; rx < room.x + room.width - 100; rx += tSize) {
-                for (let ry = room.y + 200; ry < room.y + room.height - 100; ry += tSize) {
-                  const hue = (rx + ry + now / 10) % 360;
-                  ctx.fillStyle = `hsla(${hue}, 80%, 50%, 0.15)`;
-                  ctx.fillRect(rx, ry, tSize - 8, tSize - 8);
-                }
+              if (room.name === 'VIP Skylounge & Bar') {
+                ctx.fillStyle = '#3b0764';
+                ctx.fillRect(room.x + 200, room.y + 200, 900, 80);
+                ctx.strokeStyle = '#c084fc';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(room.x + 200, room.y + 200, 900, 80);
+                ctx.fillStyle = '#e9d5ff';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText('🍸 VIP LOUNGE BAR', room.x + 650, room.y + 248);
               }
-            } else if (room.name === 'VIP Skylounge & Bar') {
-              ctx.fillStyle = '#3b0764';
-              ctx.fillRect(room.x + 200, room.y + 200, 900, 80);
-              ctx.strokeStyle = '#c084fc';
-              ctx.lineWidth = 2;
-              ctx.strokeRect(room.x + 200, room.y + 200, 900, 80);
-              ctx.fillStyle = '#e9d5ff';
-              ctx.font = 'bold 16px sans-serif';
-              ctx.fillText('🍸 VIP LOUNGE BAR', room.x + 650, room.y + 248);
             }
           }
 
