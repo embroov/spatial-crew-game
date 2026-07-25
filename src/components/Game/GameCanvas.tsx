@@ -352,6 +352,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
           // 4. Wall Partitions & Glowing Entry Doorways
           for (const wall of GameMap.WALLS) {
+            if (wall.invisible) continue; // Skip rendering invisible stage collision boundary
+
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
 

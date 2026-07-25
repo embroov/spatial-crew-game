@@ -34,6 +34,7 @@ export interface MapWall {
   y: number;
   width: number;
   height: number;
+  invisible?: boolean;
 }
 
 export interface MapRoomZone {
