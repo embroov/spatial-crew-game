@@ -48,9 +48,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const keysRef = useRef<{ [key: string]: boolean }>({});
   const walkDistanceRef = useRef<number>(0);
 
+  const loungeBarImgRef = useRef<HTMLImageElement | null>(null);
+  const gameRoomImgRef = useRef<HTMLImageElement | null>(null);
+
   const [currentRoom, setCurrentRoom] = useState<string>('Central Cyber Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
-  const [zoomScale, setZoomScale] = useState<number>(1.0);
+  const [zoomScale, setZoomScale] = useState<number>(1.0); // Camera POV Zoom (0.5x to 1.6x)
 
   const handleZoomIn = () => setZoomScale((prev) => Math.min(1.6, Math.round((prev + 0.15) * 100) / 100));
   const handleZoomOut = () => setZoomScale((prev) => Math.max(0.5, Math.round((prev - 0.15) * 100) / 100));
@@ -233,7 +236,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.scale(zoomScale, zoomScale);
           ctx.translate(camX, camY);
 
-          // 1. Grid Cyber Floor Base
+          // 1. Grid Cyber Floor Background
           ctx.strokeStyle = '#0f172a';
           ctx.lineWidth = 1;
           const gridSize = 100;
@@ -250,10 +253,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.stroke();
           }
 
-          // 2. Cobblestone Roads & Pedestrian Walkways (Connecting all rooms)
-          drawRoads(ctx);
-
-          // 3. Render Rooms Floors & Custom Props
+          // 2. Render Rooms Floors & Features
           for (const room of GameMap.ROOMS) {
             ctx.fillStyle = room.color;
             ctx.fillRect(room.x, room.y, room.width, room.height);
@@ -269,31 +269,52 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.textAlign = 'center';
             ctx.fillText(room.name.toUpperCase(), room.x + room.width / 2, room.y + 70);
 
-            // Render Room-Specific Rich Furniture & Environmental Props
+            // Distinct Room Floor Features
             if (room.name === 'DJ Stage & Dance Floor') {
-              drawDJStageProps(ctx, room, now);
+              const tSize = 100;
+              for (let rx = room.x + 100; rx < room.x + room.width - 100; rx += tSize) {
+                for (let ry = room.y + 200; ry < room.y + room.height - 100; ry += tSize) {
+                  const hue = (rx + ry + now / 10) % 360;
+                  ctx.fillStyle = `hsla(${hue}, 80%, 50%, 0.15)`;
+                  ctx.fillRect(rx, ry, tSize - 8, tSize - 8);
+                }
+              }
             } else if (room.name === 'VIP Skylounge & Bar') {
-              drawVIPBarProps(ctx, room);
-            } else if (room.name === 'Neon Arcade & Gaming') {
-              drawArcadeProps(ctx, room);
-            } else if (room.name === 'Courtyard Stage') {
-              drawOutdoorStageProps(ctx, room, now);
-            } else if (room.name === 'Sunset Terrace Café') {
-              drawCafeProps(ctx, room);
-            } else if (room.name === 'Rooftop Observatory') {
-              drawObservatoryProps(ctx, room);
-            } else if (room.name === 'Zen Chill Lounge') {
-              drawZenLoungeProps(ctx, room);
+              ctx.fillStyle = '#3b0764';
+              ctx.fillRect(room.x + 200, room.y + 200, 900, 80);
+              ctx.strokeStyle = '#c084fc';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(room.x + 200, room.y + 200, 900, 80);
+              ctx.fillStyle = '#e9d5ff';
+              ctx.font = 'bold 16px sans-serif';
+              ctx.fillText('🍸 VIP LOUNGE BAR', room.x + 650, room.y + 248);
             }
           }
 
-          // 4. Central Fountain Monument with Water Jets
-          drawCentralFountain(ctx, now);
+          // 3. Central Fountain Monument
+          const fountainRadius = 60 + Math.sin(now / 150) * 4;
+          ctx.beginPath();
+          ctx.arc(2500, 1500, fountainRadius, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(14, 165, 233, 0.25)';
+          ctx.fill();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 4;
+          ctx.stroke();
 
-          // 5. Environmental Trees, Palm Trees & Street Lamp Posts
-          drawEnvironmentalTreesAndLamps(ctx);
+          ctx.beginPath();
+          ctx.arc(2500, 1500, 30, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+          ctx.fill();
+          ctx.strokeStyle = '#7dd3fc';
+          ctx.lineWidth = 2;
+          ctx.stroke();
 
-          // 6. Wall Partitions & Glowing Entry Doorways
+          ctx.fillStyle = '#e0f2fe';
+          ctx.font = 'bold 14px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('✨ CYBER FOUNTAIN ✨', 2500, 1505);
+
+          // 4. Wall Partitions & Glowing Entry Doorways
           for (const wall of GameMap.WALLS) {
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
@@ -303,7 +324,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
           }
 
-          // Doorway Entry Arch Indicators
+          // 5. Doorway Entry Arch Indicators
           const doorPads = [
             { name: "VIP Bar Entry", x: 750, y: 1070, w: 350, h: 30 },
             { name: "Observatory Entry", x: 3850, y: 1070, w: 350, h: 30 },
@@ -345,7 +366,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.stroke();
           }
 
-          // 7. Render Players as 2D Animated Characters
+          // 6. Render Players as 2D Animated Characters
           const realTimeNow = Date.now();
           players.forEach((p) => {
             const isMe = p.id === localPlayer.id;
@@ -667,440 +688,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     </div>
   );
 };
-
-// --- ROAD & PEDESTRIAN WALKWAYS RENDERER ---
-function drawRoads(ctx: CanvasRenderingContext2D) {
-  ctx.save();
-  ctx.fillStyle = '#1e293b';
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 3;
-
-  // Main Horizontal Central Avenue (Y: 1600 - 1800)
-  ctx.fillRect(100, 1600, 4800, 200);
-  ctx.strokeRect(100, 1600, 4800, 200);
-
-  // Main Vertical Central Avenue (X: 2400 - 2600)
-  ctx.fillRect(2400, 100, 200, 3300);
-  ctx.strokeRect(2400, 100, 200, 3300);
-
-  // Cobblestone Road Markings / Center Lines
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 4;
-  ctx.setLineDash([20, 20]);
-
-  // Horizontal Yellow Dividing Line
-  ctx.beginPath();
-  ctx.moveTo(100, 1700);
-  ctx.lineTo(4900, 1700);
-  ctx.stroke();
-
-  // Vertical Yellow Dividing Line
-  ctx.beginPath();
-  ctx.moveTo(2500, 100);
-  ctx.lineTo(2500, 3400);
-  ctx.stroke();
-
-  ctx.setLineDash([]);
-  ctx.restore();
-}
-
-// --- CENTRAL FOUNTAIN MONUMENT RENDERER ---
-function drawCentralFountain(ctx: CanvasRenderingContext2D, now: number) {
-  ctx.save();
-  const fX = 2500;
-  const fY = 1500;
-
-  // Outer Stone Plaza Ring
-  ctx.beginPath();
-  ctx.arc(fX, fY, 110, 0, Math.PI * 2);
-  ctx.fillStyle = '#1e293b';
-  ctx.fill();
-  ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  // Water Pool
-  const waveRadius = 75 + Math.sin(now / 150) * 5;
-  ctx.beginPath();
-  ctx.arc(fX, fY, waveRadius, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(14, 165, 233, 0.35)';
-  ctx.fill();
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 4;
-  ctx.stroke();
-
-  // Fountain Inner Core Statue
-  ctx.beginPath();
-  ctx.arc(fX, fY, 32, 0, Math.PI * 2);
-  ctx.fillStyle = '#7dd3fc';
-  ctx.fill();
-  ctx.strokeStyle = '#0284c7';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  // Water Jet Ripples
-  for (let i = 0; i < 4; i++) {
-    const angle = (now / 300) + (i * Math.PI / 2);
-    const jX = fX + Math.cos(angle) * 45;
-    const jY = fY + Math.sin(angle) * 45;
-    ctx.beginPath();
-    ctx.arc(jX, jY, 8, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.fill();
-  }
-
-  ctx.fillStyle = '#e0f2fe';
-  ctx.font = 'bold 15px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('✨ CYBER FOUNTAIN ✨', fX, fY + 5);
-  ctx.restore();
-}
-
-// --- ROOM PROPS: DJ STAGE & DANCE FLOOR ---
-function drawDJStageProps(ctx: CanvasRenderingContext2D, room: any, now: number) {
-  ctx.save();
-  const sX = room.x + 300;
-  const sY = room.y + 120;
-  const sW = 700;
-  const sH = 200;
-
-  // Elevated Stage Platform
-  ctx.fillStyle = '#1e1b4b';
-  ctx.fillRect(sX, sY, sW, sH);
-  ctx.strokeStyle = '#818cf8';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(sX, sY, sW, sH);
-
-  // DJ Turntable Booth Desk
-  ctx.fillStyle = '#312e81';
-  ctx.fillRect(sX + 250, sY + 60, 200, 80);
-  ctx.strokeStyle = '#a5b4fc';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(sX + 250, sY + 60, 200, 80);
-
-  // Vinyl Records
-  ctx.beginPath();
-  ctx.arc(sX + 300, sY + 100, 18, 0, Math.PI * 2);
-  ctx.fillStyle = '#09090b';
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(sX + 400, sY + 100, 18, 0, Math.PI * 2);
-  ctx.fill();
-
-  // GIANT CONCERT SPEAKER TOWERS (Left & Right)
-  const pulse = Math.abs(Math.sin(now / 80)) * 6;
-
-  // Left Speaker Stack
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(sX + 40, sY + 30, 90, 140);
-  ctx.strokeStyle = '#c084fc';
-  ctx.strokeRect(sX + 40, sY + 30, 90, 140);
-  ctx.beginPath();
-  ctx.arc(sX + 85, sY + 70, 22 + pulse, 0, Math.PI * 2);
-  ctx.fillStyle = '#a855f7';
-  ctx.fill();
-
-  // Right Speaker Stack
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(sX + 570, sY + 30, 90, 140);
-  ctx.strokeStyle = '#c084fc';
-  ctx.strokeRect(sX + 570, sY + 30, 90, 140);
-  ctx.beginPath();
-  ctx.arc(sX + 615, sY + 70, 22 + pulse, 0, Math.PI * 2);
-  ctx.fillStyle = '#a855f7';
-  ctx.fill();
-
-  // Laser Beams Sweeping Across Dance Floor
-  const laserAngle = Math.sin(now / 200) * 0.8;
-  ctx.strokeStyle = 'rgba(236, 72, 153, 0.4)';
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(sX + 350, sY + 140);
-  ctx.lineTo(sX + 350 + Math.cos(laserAngle) * 500, sY + 600 + Math.sin(laserAngle) * 200);
-  ctx.stroke();
-
-  ctx.restore();
-}
-
-// --- ROOM PROPS: VIP BAR & LOUNGE ---
-function drawVIPBarProps(ctx: CanvasRenderingContext2D, room: any) {
-  ctx.save();
-  const bX = room.x + 200;
-  const bY = room.y + 200;
-
-  // Curved Bar Counter
-  ctx.fillStyle = '#4c1d95';
-  ctx.fillRect(bX, bY, 850, 90);
-  ctx.strokeStyle = '#c084fc';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(bX, bY, 850, 90);
-
-  // Bar Stools
-  for (let stoolX = bX + 60; stoolX < bX + 800; stoolX += 90) {
-    ctx.beginPath();
-    ctx.arc(stoolX, bY + 125, 16, 0, Math.PI * 2);
-    ctx.fillStyle = '#9333ea';
-    ctx.fill();
-    ctx.strokeStyle = '#f3e8ff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-
-  // VIP Lounge U-Sofa Group
-  ctx.fillStyle = '#581c87';
-  ctx.fillRect(room.x + 250, room.y + 500, 700, 60);
-  ctx.fillRect(room.x + 250, room.y + 500, 60, 250);
-  ctx.fillRect(room.x + 890, room.y + 500, 60, 250);
-
-  // Glass Coffee Table
-  ctx.fillStyle = 'rgba(192, 132, 252, 0.25)';
-  ctx.fillRect(room.x + 360, room.y + 580, 480, 110);
-  ctx.strokeStyle = '#e9d5ff';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(room.x + 360, room.y + 580, 480, 110);
-
-  ctx.restore();
-}
-
-// --- ROOM PROPS: NEON ARCADE ---
-function drawArcadeProps(ctx: CanvasRenderingContext2D, room: any) {
-  ctx.save();
-  // Row of Arcade Cabinets
-  const arcades = ['PAC-MAN 🕹️', 'GALAGA 🚀', 'STREET FIGHTER 🥋', 'PINBALL 🎰', 'RACING 🏎️'];
-  let aX = room.x + 150;
-  for (const arc of arcades) {
-    ctx.fillStyle = '#14532d';
-    ctx.fillRect(aX, room.y + 150, 140, 180);
-    ctx.strokeStyle = '#4ade80';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(aX, room.y + 150, 140, 180);
-
-    // Cabinet Screen
-    ctx.fillStyle = '#22c55e';
-    ctx.fillRect(aX + 15, room.y + 180, 110, 80);
-
-    ctx.fillStyle = '#f0fdf4';
-    ctx.font = 'bold 10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(arc, aX + 70, room.y + 225);
-    aX += 220;
-  }
-
-  // Pool Billiard Table
-  const pX = room.x + 300;
-  const pY = room.y + 550;
-  ctx.fillStyle = '#15803d'; // Green felt
-  ctx.fillRect(pX, pY, 400, 220);
-  ctx.strokeStyle = '#78350f'; // Wood border
-  ctx.lineWidth = 12;
-  ctx.strokeRect(pX, pY, 400, 220);
-
-  // Billiard Balls
-  ctx.beginPath();
-  ctx.arc(pX + 280, pY + 110, 6, 0, Math.PI * 2);
-  ctx.fillStyle = '#ef4444';
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(pX + 300, pY + 100, 6, 0, Math.PI * 2);
-  ctx.fillStyle = '#eab308';
-  ctx.fill();
-
-  ctx.restore();
-}
-
-// --- ROOM PROPS: OUTDOOR COURTYARD STAGE ---
-function drawOutdoorStageProps(ctx: CanvasRenderingContext2D, room: any, now: number) {
-  ctx.save();
-  const stX = room.x + 350;
-  const stY = room.y + 120;
-
-  // Stage Platform
-  ctx.fillStyle = '#312e81';
-  ctx.fillRect(stX, stY, 700, 180);
-  ctx.strokeStyle = '#818cf8';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(stX, stY, 700, 180);
-
-  // Mic Stand
-  ctx.beginPath();
-  ctx.arc(stX + 350, stY + 90, 8, 0, Math.PI * 2);
-  ctx.fillStyle = '#f8fafc';
-  ctx.fill();
-
-  // Spotlight Cones
-  const spotGlow = Math.sin(now / 150) * 0.1 + 0.25;
-  ctx.fillStyle = `rgba(251, 191, 36, ${spotGlow})`;
-  ctx.beginPath();
-  ctx.moveTo(stX + 150, stY);
-  ctx.lineTo(stX + 50, stY + 450);
-  ctx.lineTo(stX + 250, stY + 450);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.restore();
-}
-
-// --- ROOM PROPS: CAFÉ PATIO ---
-function drawCafeProps(ctx: CanvasRenderingContext2D, room: any) {
-  ctx.save();
-  // Round Café Tables with Umbrellas
-  const tables = [
-    { x: room.x + 300, y: room.y + 250 },
-    { x: room.x + 700, y: room.y + 250 },
-    { x: room.x + 300, y: room.y + 550 },
-    { x: room.x + 700, y: room.y + 550 },
-  ];
-
-  for (const t of tables) {
-    // Umbrella Canopy
-    ctx.beginPath();
-    ctx.arc(t.x, t.y, 65, 0, Math.PI * 2);
-    ctx.fillStyle = '#f59e0b';
-    ctx.fill();
-    ctx.strokeStyle = '#78350f';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Table Top
-    ctx.beginPath();
-    ctx.arc(t.x, t.y, 25, 0, Math.PI * 2);
-    ctx.fillStyle = '#fffbeb';
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-// --- ROOM PROPS: OBSERVATORY ---
-function drawObservatoryProps(ctx: CanvasRenderingContext2D, room: any) {
-  ctx.save();
-  // Giant Astronomical Telescope
-  const tX = room.x + 650;
-  const tY = room.y + 400;
-
-  ctx.fillStyle = '#0284c7';
-  ctx.fillRect(tX - 120, tY - 20, 240, 40);
-  ctx.strokeStyle = '#bae6fd';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(tX - 120, tY - 20, 240, 40);
-
-  ctx.beginPath();
-  ctx.arc(tX, tY, 50, 0, Math.PI * 2);
-  ctx.fillStyle = '#0f172a';
-  ctx.fill();
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  ctx.fillStyle = '#e0f2fe';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('🔭 DEEP SPACE TELESCOPE', tX, tY + 4);
-  ctx.restore();
-}
-
-// --- ROOM PROPS: ZEN CHILL LOUNGE ---
-function drawZenLoungeProps(ctx: CanvasRenderingContext2D, room: any) {
-  ctx.save();
-  // Zen Garden Bamboo Ring & Beanbags
-  ctx.beginPath();
-  ctx.arc(room.x + 700, room.y + 320, 160, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(20, 184, 166, 0.2)';
-  ctx.fill();
-  ctx.strokeStyle = '#2dd4bf';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  // Beanbag Loungers
-  const bags = [
-    { x: room.x + 620, y: room.y + 320 },
-    { x: room.x + 780, y: room.y + 320 },
-    { x: room.x + 700, y: room.y + 240 },
-    { x: room.x + 700, y: room.y + 400 },
-  ];
-  for (const b of bags) {
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, 22, 0, Math.PI * 2);
-    ctx.fillStyle = '#0d9488';
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-// --- ENVIRONMENTAL TREES & STREET LAMP POSTS ---
-function drawEnvironmentalTreesAndLamps(ctx: CanvasRenderingContext2D) {
-  ctx.save();
-  const trees = [
-    { x: 1650, y: 800, type: 'oak' },
-    { x: 3350, y: 800, type: 'oak' },
-    { x: 1650, y: 2200, type: 'oak' },
-    { x: 3350, y: 2200, type: 'oak' },
-    { x: 2100, y: 1400, type: 'palm' },
-    { x: 2900, y: 1400, type: 'palm' },
-    { x: 2100, y: 1800, type: 'palm' },
-    { x: 2900, y: 1800, type: 'palm' },
-    { x: 1600, y: 3100, type: 'oak' },
-    { x: 3400, y: 3100, type: 'oak' }
-  ];
-
-  for (const tree of trees) {
-    if (tree.type === 'palm') {
-      // Palm Tree Canopy
-      ctx.beginPath();
-      ctx.arc(tree.x, tree.y, 35, 0, Math.PI * 2);
-      ctx.fillStyle = '#15803d';
-      ctx.fill();
-      ctx.strokeStyle = '#4ade80';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(tree.x, tree.y, 10, 0, Math.PI * 2);
-      ctx.fillStyle = '#78350f';
-      ctx.fill();
-    } else {
-      // Oak Tree Canopy
-      ctx.beginPath();
-      ctx.arc(tree.x, tree.y, 45, 0, Math.PI * 2);
-      ctx.fillStyle = '#166534';
-      ctx.fill();
-      ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // Foliage Inner Ring
-      ctx.beginPath();
-      ctx.arc(tree.x - 8, tree.y - 8, 25, 0, Math.PI * 2);
-      ctx.fillStyle = '#15803d';
-      ctx.fill();
-    }
-  }
-
-  // Street Lamp Posts
-  const lamps = [
-    { x: 2350, y: 1350 },
-    { x: 2650, y: 1350 },
-    { x: 2350, y: 1850 },
-    { x: 2650, y: 1850 },
-  ];
-  for (const lamp of lamps) {
-    // Lamp Light Glow Aura
-    ctx.beginPath();
-    ctx.arc(lamp.x, lamp.y, 40, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(253, 224, 71, 0.15)';
-    ctx.fill();
-
-    // Lamp Post Pole
-    ctx.beginPath();
-    ctx.arc(lamp.x, lamp.y, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#fde047';
-    ctx.fill();
-    ctx.strokeStyle = '#78350f';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
 
 /**
  * Custom 2D Character Renderer with visible hands, stride sway, 
