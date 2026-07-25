@@ -48,26 +48,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const keysRef = useRef<{ [key: string]: boolean }>({});
   const walkDistanceRef = useRef<number>(0);
 
-  const loungeBarImgRef = useRef<HTMLImageElement | null>(null);
-  const gameRoomImgRef = useRef<HTMLImageElement | null>(null);
-
-  const [currentRoom, setCurrentRoom] = useState<string>('Grand Plaza');
+  const [currentRoom, setCurrentRoom] = useState<string>('Central Cyber Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
-
-  // Load custom high-res room images
-  useEffect(() => {
-    const imgLounge = new Image();
-    imgLounge.src = '/lounge_bar.jpg';
-    imgLounge.onload = () => {
-      loungeBarImgRef.current = imgLounge;
-    };
-
-    const imgGame = new Image();
-    imgGame.src = '/game_room.jpg';
-    imgGame.onload = () => {
-      gameRoomImgRef.current = imgGame;
-    };
-  }, []);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -203,9 +185,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const width = (canvas.width = window.innerWidth);
           const height = (canvas.height = window.innerHeight);
 
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-
           ctx.fillStyle = '#030712';
           ctx.fillRect(0, 0, width, height);
 
@@ -215,8 +194,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.save();
           ctx.translate(camX, camY);
 
-          // Grid Background
-          ctx.strokeStyle = '#1e293b';
+          // 1. Grid Cyber Floor Background
+          ctx.strokeStyle = '#0f172a';
           ctx.lineWidth = 1;
           const gridSize = 100;
           for (let x = 0; x < GameMap.MAP_WIDTH; x += gridSize) {
@@ -232,50 +211,103 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.stroke();
           }
 
-          // Render Rooms Floor & Graphics
+          // 2. Render Rooms Floors & Features
           for (const room of GameMap.ROOMS) {
             ctx.fillStyle = room.color;
             ctx.fillRect(room.x, room.y, room.width, room.height);
 
-            // Render Custom High-Res Images for Lounge Bar and Game Room
-            if (room.name === 'Lounge Bar' && loungeBarImgRef.current) {
-              ctx.drawImage(loungeBarImgRef.current, room.x, room.y, room.width, room.height);
-            } else if (room.name === 'Game Room' && gameRoomImgRef.current) {
-              ctx.drawImage(gameRoomImgRef.current, room.x, room.y, room.width, room.height);
-            } else {
-              ctx.strokeStyle = 'rgba(51, 65, 85, 0.6)';
-              ctx.lineWidth = 2;
-              ctx.strokeRect(room.x, room.y, room.width, room.height);
+            // Glowing Room Border Outline
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(room.x, room.y, room.width, room.height);
 
-              ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
-              ctx.font = 'bold 24px system-ui, sans-serif';
-              ctx.textAlign = 'center';
-              ctx.fillText(room.name.toUpperCase(), room.x + room.width / 2, room.y + room.height / 2);
+            // Room Title Label
+            ctx.fillStyle = 'rgba(226, 232, 240, 0.4)';
+            ctx.font = 'bold 28px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(room.name.toUpperCase(), room.x + room.width / 2, room.y + 70);
+
+            // Distinct Room Floor Features
+            if (room.name === 'DJ Stage & Dance Floor') {
+              // Glowing Neon Dance Grid
+              const tSize = 100;
+              for (let rx = room.x + 100; rx < room.x + room.width - 100; rx += tSize) {
+                for (let ry = room.y + 200; ry < room.y + room.height - 100; ry += tSize) {
+                  const hue = (rx + ry + now / 10) % 360;
+                  ctx.fillStyle = `hsla(${hue}, 80%, 50%, 0.15)`;
+                  ctx.fillRect(rx, ry, tSize - 8, tSize - 8);
+                }
+              }
+            } else if (room.name === 'VIP Skylounge & Bar') {
+              // VIP Bar Counter Top
+              ctx.fillStyle = '#3b0764';
+              ctx.fillRect(room.x + 200, room.y + 200, 900, 80);
+              ctx.strokeStyle = '#c084fc';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(room.x + 200, room.y + 200, 900, 80);
+              ctx.fillStyle = '#e9d5ff';
+              ctx.font = 'bold 16px sans-serif';
+              ctx.fillText('🍸 VIP LOUNGE BAR', room.x + 650, room.y + 248);
             }
           }
 
-          // Central Fountain Monument
+          // 3. Central Fountain Monument (x: 2500, y: 1600)
+          const fountainRadius = 90 + Math.sin(now / 150) * 4;
           ctx.beginPath();
-          ctx.arc(2000, 1180, 80, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+          ctx.arc(2500, 1600, fountainRadius, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(14, 165, 233, 0.25)';
           ctx.fill();
-          ctx.strokeStyle = '#60a5fa';
-          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 4;
           ctx.stroke();
 
-          ctx.fillStyle = '#93c5fd';
-          ctx.font = 'bold 14px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('✨ Central Fountain ✨', 2000, 1185);
+          // Fountain Inner Water Ring
+          ctx.beginPath();
+          ctx.arc(2500, 1600, 45, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+          ctx.fill();
+          ctx.strokeStyle = '#7dd3fc';
+          ctx.lineWidth = 2;
+          ctx.stroke();
 
-          // Wall Partitions
+          ctx.fillStyle = '#e0f2fe';
+          ctx.font = 'bold 16px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('✨ CENTRAL CYBER FOUNTAIN ✨', 2500, 1605);
+
+          // 4. Wall Partitions & Glowing Entry Doorways
           for (const wall of GameMap.WALLS) {
-            ctx.fillStyle = '#1e293b';
+            ctx.fillStyle = '#0f172a';
             ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
 
             ctx.strokeStyle = '#3b82f6';
             ctx.lineWidth = 2;
             ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+          }
+
+          // 5. Doorway Entry Arch Indicators (Glowing green entry pads)
+          const doorPads = [
+            { name: "VIP Bar Entry", x: 750, y: 1070, w: 350, h: 30 },
+            { name: "Observatory Entry", x: 3850, y: 1070, w: 350, h: 30 },
+            { name: "Zen Chill Entry", x: 2300, y: 820, w: 400, h: 30 },
+            { name: "Arcade Entry", x: 1470, y: 1650, w: 30, h: 300 },
+            { name: "DJ Stage Entry", x: 3500, y: 1650, w: 30, h: 300 },
+            { name: "Café Entry", x: 800, y: 2500, w: 300, h: 30 },
+            { name: "Courtyard Entry", x: 2300, y: 2400, w: 400, h: 30 },
+            { name: "Chat Pods Entry", x: 3850, y: 2500, w: 350, h: 30 }
+          ];
+
+          for (const pad of doorPads) {
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+            ctx.fillRect(pad.x, pad.y, pad.w, pad.h);
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(pad.x, pad.y, pad.w, pad.h);
+
+            ctx.fillStyle = '#6ee7b7';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🚪 OPEN ENTRY', pad.x + pad.w / 2, pad.y + pad.h / 2 + 4);
           }
 
           // Spatial Audio Proximity Range Ring
@@ -295,7 +327,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.stroke();
           }
 
-          // Render Players as 2D Animated Characters
+          // 6. Render Players as 2D Animated Characters
           const realTimeNow = Date.now();
           players.forEach((p) => {
             const isMe = p.id === localPlayer.id;
@@ -542,7 +574,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           onTouchEnd={() => handleVirtualPress('shift', false)}
           className={`w-full py-1.5 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
             isSprintingState
-              ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/30'
+              ? 'bg-amber500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/30'
               : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
           }`}
         >
