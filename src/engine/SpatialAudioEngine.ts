@@ -4,7 +4,7 @@ export class SpatialAudioEngine {
   private audioCtx: AudioContext | null = null;
   private localStream: MediaStream | null = null;
   private localAnalyser: AnalyserNode | null = null;
-  private isMuted: boolean = false;
+  private isMuted: boolean = true; // Default Microphone OFF on Join
 
   private remoteAudioNodes: Map<string, {
     source: MediaStreamAudioSourceNode;
@@ -38,6 +38,13 @@ export class SpatialAudioEngine {
         }
       });
 
+      // Mute audio track by default when joining game
+      if (this.localStream) {
+        this.localStream.getAudioTracks().forEach((track) => {
+          track.enabled = !this.isMuted;
+        });
+      }
+
       this.setupLocalAnalyser();
       return true;
     } catch (err) {
@@ -58,28 +65,29 @@ export class SpatialAudioEngine {
     this.localAnalyser.fftSize = 512;
     source.connect(this.localAnalyser);
 
-    const bufferLength = this.localAnalyser.frequencyBinCount;
-    const timeDomainData = new Uint8Array(bufferLength);
+    this.startVoiceVolumeMonitoring();
+  }
+
+  private startVoiceVolumeMonitoring() {
+    const dataArray = new Uint8Array(this.localAnalyser?.frequencyBinCount || 0);
 
     const checkVolume = () => {
-      if (!this.localAnalyser || this.isMuted) {
-        if (this.talkingCallback) this.talkingCallback(false, 0);
-      } else {
-        // RMS (Root Mean Square) volume calculation on time-domain waveform
-        this.localAnalyser.getByteTimeDomainData(timeDomainData);
-        let sumSquares = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          const norm = (timeDomainData[i] - 128) / 128;
-          sumSquares += norm * norm;
+      if (this.localAnalyser && !this.isMuted) {
+        this.localAnalyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
         }
-        const rms = Math.sqrt(sumSquares / bufferLength);
-        
-        // Dynamic gain multiplier sensitive for laptop built-in mics
-        const normalizedVolume = Math.min(1.0, rms * 6);
-        const isTalking = normalizedVolume > 0.03;
+        const average = sum / dataArray.length;
+        const normalizedVolume = Math.min(1, average / 128);
+        const isTalking = normalizedVolume > 0.08;
 
         if (this.talkingCallback) {
           this.talkingCallback(isTalking, normalizedVolume);
+        }
+      } else {
+        if (this.talkingCallback) {
+          this.talkingCallback(false, 0);
         }
       }
       this.animationFrameId = requestAnimationFrame(checkVolume);
@@ -88,14 +96,10 @@ export class SpatialAudioEngine {
     checkVolume();
   }
 
-  public setTalkingCallback(cb: (isTalking: boolean, volume: number) => void) {
-    this.talkingCallback = cb;
-  }
-
   public setMuted(muted: boolean) {
     this.isMuted = muted;
     if (this.localStream) {
-      this.localStream.getAudioTracks().forEach(track => {
+      this.localStream.getAudioTracks().forEach((track) => {
         track.enabled = !muted;
       });
     }
@@ -105,87 +109,87 @@ export class SpatialAudioEngine {
     return this.isMuted;
   }
 
+  public setTalkingCallback(cb: (isTalking: boolean, volume: number) => void) {
+    this.talkingCallback = cb;
+  }
+
   public getLocalStream(): MediaStream | null {
     return this.localStream;
   }
 
   public addRemotePeerStream(peerId: string, stream: MediaStream) {
-    if (!this.audioCtx) return;
+    const ctx = this.audioCtx;
+    if (!ctx) return;
 
-    this.removeRemotePeerStream(peerId);
+    if (this.remoteAudioNodes.has(peerId)) {
+      this.removeRemotePeerStream(peerId);
+    }
 
-    const audioEl = new Audio();
-    audioEl.srcObject = stream;
-    audioEl.autoplay = true;
-    audioEl.muted = true;
+    const audioElement = new Audio();
+    audioElement.srcObject = stream;
+    audioElement.autoplay = true;
 
-    const source = this.audioCtx.createMediaStreamSource(stream);
-    const gainNode = this.audioCtx.createGain();
-    gainNode.gain.value = 0;
+    const source = ctx.createMediaStreamSource(stream);
+    const gainNode = ctx.createGain();
 
     let pannerNode: StereoPannerNode | PannerNode;
-
-    if ('createStereoPanner' in (this.audioCtx as object)) {
-      pannerNode = this.audioCtx.createStereoPanner();
-      pannerNode.pan.value = 0;
+    if (typeof (ctx as any).createStereoPanner === 'function') {
+      pannerNode = (ctx as any).createStereoPanner();
     } else {
-      const panner = (this.audioCtx as AudioContext).createPanner();
-      panner.panningModel = 'HRTF';
-      pannerNode = panner;
+      pannerNode = ctx.createPanner();
     }
 
     source.connect(gainNode);
     gainNode.connect(pannerNode);
-    pannerNode.connect(this.audioCtx.destination);
+    pannerNode.connect(ctx.destination);
 
     this.remoteAudioNodes.set(peerId, {
       source,
       gainNode,
       pannerNode,
-      element: audioEl
+      element: audioElement
     });
   }
 
-  public updateRemotePeerPosition(peerId: string, localPos: Position, remotePos: Position) {
-    const node = this.remoteAudioNodes.get(peerId);
-    if (!node || !this.audioCtx) return;
-
-    const dx = remotePos.x - localPos.x;
-    const dy = remotePos.y - localPos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    let gain = 0;
-    if (distance <= this.config.minDistance) {
-      gain = 1.0;
-    } else if (distance >= this.config.maxDistance) {
-      gain = 0.0;
-    } else {
-      const normalizedDist = (distance - this.config.minDistance) / (this.config.maxDistance - this.config.minDistance);
-      gain = Math.pow(1.0 - normalizedDist, this.config.rolloffFactor);
-    }
-
-    node.gainNode.gain.setTargetAtTime(gain, this.audioCtx.currentTime, 0.05);
-
-    if ('pan' in node.pannerNode) {
-      const maxPanDist = 350;
-      const panValue = Math.max(-1.0, Math.min(1.0, dx / maxPanDist));
-      (node.pannerNode as StereoPannerNode).pan.setTargetAtTime(panValue, this.audioCtx.currentTime, 0.05);
-    }
-  }
-
   public removeRemotePeerStream(peerId: string) {
-    const node = this.remoteAudioNodes.get(peerId);
-    if (node) {
-      node.source.disconnect();
-      node.gainNode.disconnect();
-      node.pannerNode.disconnect();
-      node.element.srcObject = null;
+    const nodes = this.remoteAudioNodes.get(peerId);
+    if (nodes) {
+      nodes.source.disconnect();
+      nodes.gainNode.disconnect();
+      nodes.pannerNode.disconnect();
+      nodes.element.srcObject = null;
+      nodes.element.remove();
       this.remoteAudioNodes.delete(peerId);
     }
   }
 
-  public updateConfig(newConfig: Partial<AudioDistanceConfig>) {
-    this.config = { ...this.config, ...newConfig };
+  public updateRemotePeerPosition(peerId: string, localPos: Position, peerPos: Position) {
+    const nodes = this.remoteAudioNodes.get(peerId);
+    if (!nodes) return;
+
+    const dx = peerPos.x - localPos.x;
+    const dy = peerPos.y - localPos.y;
+    const distance = Math.hypot(dx, dy);
+
+    // 1. Calculate Attenuated Distance Volume
+    let volume = 0;
+    if (distance <= this.config.minDistance) {
+      volume = 1;
+    } else if (distance >= this.config.maxDistance) {
+      volume = 0;
+    } else {
+      const range = this.config.maxDistance - this.config.minDistance;
+      const normalizedDist = (distance - this.config.minDistance) / range;
+      volume = Math.pow(1 - normalizedDist, this.config.rolloffFactor);
+    }
+
+    nodes.gainNode.gain.setValueAtTime(volume, this.audioCtx?.currentTime || 0);
+
+    // 2. Calculate Stereo Pan (-1 Left to +1 Right)
+    const pan = Math.max(-1, Math.min(1, dx / (this.config.maxDistance * 0.75)));
+    if ('pan' in nodes.pannerNode) {
+      (nodes.pannerNode as StereoPannerNode).pan.setValueAtTime(pan, this.audioCtx?.currentTime || 0);
+    }
   }
 
   public getConfig(): AudioDistanceConfig {
@@ -196,11 +200,11 @@ export class SpatialAudioEngine {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
     }
-    this.remoteAudioNodes.forEach((_, id) => this.removeRemotePeerStream(id));
+    this.remoteAudioNodes.forEach((_, peerId) => this.removeRemotePeerStream(peerId));
     if (this.localStream) {
-      this.localStream.getTracks().forEach(t => t.stop());
+      this.localStream.getTracks().forEach((track) => track.stop());
     }
-    if (this.audioCtx && this.audioCtx.state !== 'closed') {
+    if (this.audioCtx) {
       this.audioCtx.close();
     }
   }

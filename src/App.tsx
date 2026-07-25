@@ -20,7 +20,7 @@ export function App() {
   // UI state for hotkeys
   const [chatOpen, setChatOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
-  const [emoteOpen, setEmoteOpen] = useState(true);
+  const [emoteOpen, setEmoteOpen] = useState(false);
   const [hideCursor, setHideCursor] = useState(false);
 
   const [localPlayer, setLocalPlayer] = useState<Player>({
@@ -29,10 +29,10 @@ export function App() {
     color: '#84cc16',
     position: { ...GameMap.SPAWN_POS },
     facingAngle: 0,
-    isMuted: false,
+    isMuted: true, // Default Microphone OFF on Join
     isTalking: false,
     audioVolume: 0,
-    room: 'Grand Plaza',
+    room: 'Central Cyber Plaza',
   });
 
   const [players, setPlayers] = useState<Player[]>([]);
@@ -122,10 +122,14 @@ export function App() {
   const handleJoinGame = async (name: string, color: string, code: string) => {
     setRoomCode(code);
 
+    // Explicitly set microphone to MUTED (OFF) on join
+    audioEngineRef.current.setMuted(true);
+
     const newLocalPlayer: Player = {
       ...localPlayer,
       name,
       color,
+      isMuted: true, // Default Microphone OFF
       position: { ...GameMap.SPAWN_POS },
     };
     setLocalPlayer(newLocalPlayer);
@@ -139,7 +143,6 @@ export function App() {
           const now = Date.now();
           return updatedPlayers.map((newP) => {
             const existing = prevPlayers.find((p) => p.id === newP.id);
-            // Strict 3-second expiration check: clear if expiresAt <= now
             if (existing?.activeEmote && existing.activeEmote.expiresAt > now) {
               return { ...newP, activeEmote: existing.activeEmote };
             }
@@ -183,7 +186,6 @@ export function App() {
     const isSameActive = currentEmote && currentEmote.emoji === emoji && currentEmote.expiresAt > now;
 
     if (isSameActive) {
-      // Toggle OFF: Clicked same emoji again -> CANCEL / STOP immediately
       setLocalPlayer((prev) => ({
         ...prev,
         activeEmote: undefined,
@@ -193,7 +195,6 @@ export function App() {
       );
       socketServiceRef.current.sendEmote('');
     } else {
-      // Start NEW 3-second emote
       const expiresAt = now + 3000;
       const newEmoteObj = { emoji, expiresAt };
 
