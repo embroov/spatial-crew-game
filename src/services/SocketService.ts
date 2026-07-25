@@ -99,7 +99,7 @@ export class SocketService {
       }
 
       if (this.handlers.onPlayersUpdate) {
-        this.handlers.onPlayersUpdate(Array.from(this.playersMap.values()));
+        this.handlers.onPlayersUpdate(this.getPlayers());
       }
     });
 
@@ -114,7 +114,7 @@ export class SocketService {
 
       if (this.handlers.onPlayerJoined) this.handlers.onPlayerJoined(player);
       if (this.handlers.onPlayersUpdate) {
-        this.handlers.onPlayersUpdate(Array.from(this.playersMap.values()));
+        this.handlers.onPlayersUpdate(this.getPlayers());
       }
     });
 
@@ -124,7 +124,7 @@ export class SocketService {
         p.position = data.position;
         p.facingAngle = data.facingAngle;
         if (this.handlers.onPlayersUpdate) {
-          this.handlers.onPlayersUpdate(Array.from(this.playersMap.values()));
+          this.handlers.onPlayersUpdate(this.getPlayers());
         }
       }
     });
@@ -135,7 +135,7 @@ export class SocketService {
         p.isMuted = data.isMuted;
         p.isTalking = data.isTalking;
         if (this.handlers.onPlayersUpdate) {
-          this.handlers.onPlayersUpdate(Array.from(this.playersMap.values()));
+          this.handlers.onPlayersUpdate(this.getPlayers());
         }
       }
     });
@@ -145,7 +145,7 @@ export class SocketService {
       this.playersMap.delete(id);
       if (this.handlers.onPlayerLeft) this.handlers.onPlayerLeft(id);
       if (this.handlers.onPlayersUpdate) {
-        this.handlers.onPlayersUpdate(Array.from(this.playersMap.values()));
+        this.handlers.onPlayersUpdate(this.getPlayers());
       }
     });
 
@@ -154,7 +154,14 @@ export class SocketService {
     });
 
     this.socket.on('emote_received', (emote: EmoteNotification) => {
+      const p = this.playersMap.get(emote.playerId);
+      if (p) {
+        p.activeEmote = emote.emoji ? { emoji: emote.emoji, expiresAt: Date.now() + 3000 } : undefined;
+      }
       if (this.handlers.onEmoteReceived) this.handlers.onEmoteReceived(emote);
+      if (this.handlers.onPlayersUpdate) {
+        this.handlers.onPlayersUpdate(this.getPlayers());
+      }
     });
 
     this.socket.on('webrtc_signal', ({ fromId, signal }: { fromId: string; signal: any }) => {
@@ -264,7 +271,7 @@ export class SocketService {
     this.playersMap.set(player.id, player);
 
     if (this.handlers.onPlayersUpdate) {
-      this.handlers.onPlayersUpdate(Array.from(this.playersMap.values()));
+      this.handlers.onPlayersUpdate(this.getPlayers());
     }
 
     if (this.socket && this.socket.connected) {
@@ -283,7 +290,7 @@ export class SocketService {
     }
 
     if (this.handlers.onPlayersUpdate) {
-      this.handlers.onPlayersUpdate(Array.from(this.playersMap.values()));
+      this.handlers.onPlayersUpdate(this.getPlayers());
     }
   }
 
@@ -298,7 +305,7 @@ export class SocketService {
     }
 
     if (this.handlers.onPlayersUpdate) {
-      this.handlers.onPlayersUpdate(Array.from(this.playersMap.values()));
+      this.handlers.onPlayersUpdate(this.getPlayers());
     }
   }
 
@@ -326,6 +333,11 @@ export class SocketService {
       timestamp: Date.now()
     };
 
+    if (this.localPlayer) {
+      this.localPlayer.activeEmote = emoji ? { emoji, expiresAt: Date.now() + 3000 } : undefined;
+      this.playersMap.set(this.localPlayer.id, this.localPlayer);
+    }
+
     if (this.socket && this.socket.connected) {
       this.socket.emit('send_emote', emote);
     }
@@ -337,6 +349,12 @@ export class SocketService {
   }
 
   public getPlayers(): Player[] {
+    const now = Date.now();
+    this.playersMap.forEach((p) => {
+      if (p.activeEmote && p.activeEmote.expiresAt <= now) {
+        p.activeEmote = undefined;
+      }
+    });
     return Array.from(this.playersMap.values());
   }
 

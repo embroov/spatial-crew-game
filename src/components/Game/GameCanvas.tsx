@@ -49,7 +49,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const [currentRoom, setCurrentRoom] = useState<string>('Grand Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
-  const [showEmotePicker, setShowEmotePicker] = useState<boolean>(false);
+  const [showEmotePicker, setShowEmotePicker] = useState<boolean>(true);
 
   // Load custom high-res room images
   useEffect(() => {
@@ -463,38 +463,38 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           title="Toggle Emote Menu (E)"
         >
           <Smile className="w-4 h-4 text-purple-300" />
-          <span className="hidden sm:inline">Emotes</span>
+          <span>Emotes</span>
           <kbd className="px-1 py-0.2 bg-slate-900 border border-slate-700 rounded text-[10px] font-mono text-purple-300">
             E
           </kbd>
         </button>
 
         {/* Expanded Emotes Buttons */}
-        <div className={`flex items-center gap-1.5 transition-all duration-200 ${
-          showEmotePicker ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none hidden sm:flex sm:opacity-100 sm:scale-100 sm:pointer-events-auto'
-        }`}>
-          {AVAILABLE_EMOTES.map((em, idx) => {
-            const isEmoteActive = localPlayer.activeEmote?.emoji === em.emoji && (localPlayer.activeEmote?.expiresAt || 0) > Date.now();
-            return (
-              <button
-                key={em.name}
-                type="button"
-                onClick={() => onSendEmote(em.emoji)}
-                className={`w-9 h-9 active:scale-95 text-base rounded-xl border flex items-center justify-center transition-all cursor-pointer relative group ${
-                  isEmoteActive
-                    ? 'bg-purple-600 border-purple-400 ring-2 ring-purple-400/50 shadow-lg animate-pulse'
-                    : 'bg-slate-800/90 hover:bg-purple-600/30 hover:border-purple-500/60 border-slate-700/80'
-                }`}
-                title={`${em.name} (Hotkey ${idx + 1}) - Click to ${isEmoteActive ? 'Stop' : 'Play'}`}
-              >
-                <span>{em.emoji}</span>
-                <span className="absolute -top-6 text-[9px] font-mono font-bold bg-slate-950 text-slate-400 border border-slate-800 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                  {idx + 1}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        {showEmotePicker && (
+          <div className="flex items-center gap-1.5 transition-all duration-200">
+            {AVAILABLE_EMOTES.map((em, idx) => {
+              const isEmoteActive = localPlayer.activeEmote?.emoji === em.emoji && (localPlayer.activeEmote?.expiresAt || 0) > Date.now();
+              return (
+                <button
+                  key={em.name}
+                  type="button"
+                  onClick={() => onSendEmote(em.emoji)}
+                  className={`w-9 h-9 active:scale-95 text-base rounded-xl border flex items-center justify-center transition-all cursor-pointer relative group ${
+                    isEmoteActive
+                      ? 'bg-purple-600 border-purple-400 ring-2 ring-purple-400/50 shadow-lg animate-pulse'
+                      : 'bg-slate-800/90 hover:bg-purple-600/30 hover:border-purple-500/60 border-slate-700/80'
+                  }`}
+                  title={`${em.name} (Hotkey ${idx + 1}) - Click to ${isEmoteActive ? 'Stop' : 'Play'}`}
+                >
+                  <span>{em.emoji}</span>
+                  <span className="absolute -top-6 text-[9px] font-mono font-bold bg-slate-950 text-slate-400 border border-slate-800 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    {idx + 1}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* On-Screen D-Pad & Sprint Button */}
