@@ -61,7 +61,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const handleZoomOut = () => setZoomScale((prev) => Math.max(0.5, Math.round((prev - 0.15) * 100) / 100));
   const handleResetZoom = () => setZoomScale(1.0);
 
-  // Load custom room image graphics
+  // Load custom room image graphics and process white background to 100% true transparency
   useEffect(() => {
     const imgDJ = new Image();
     imgDJ.src = '/dj_stage.jpg';
@@ -72,7 +72,41 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     const imgOverlay = new Image();
     imgOverlay.src = '/dj_stage_overlay.png';
     imgOverlay.onload = () => {
-      djStageOverlayImgRef.current = imgOverlay;
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = imgOverlay.naturalWidth;
+      tempCanvas.height = imgOverlay.naturalHeight;
+      const tCtx = tempCanvas.getContext('2d');
+
+      if (tCtx) {
+        tCtx.drawImage(imgOverlay, 0, 0);
+        const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        const d = imgData.data;
+
+        // Process white, light-gray, and faux checkerboard pixels to Alpha = 0
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i];
+          const g = d[i + 1];
+          const b = d[i + 2];
+
+          const isWhiteOrCheckerboard =
+            (r > 190 && g > 190 && b > 190) ||
+            (r > 160 && g > 160 && b > 160 && Math.abs(r - g) < 10 && Math.abs(g - b) < 10);
+
+          if (isWhiteOrCheckerboard) {
+            d[i + 3] = 0; // Alpha = 0 (Transparent)
+          }
+        }
+
+        tCtx.putImageData(imgData, 0, 0);
+
+        const cleanImg = new Image();
+        cleanImg.src = tempCanvas.toDataURL('image/png');
+        cleanImg.onload = () => {
+          djStageOverlayImgRef.current = cleanImg;
+        };
+      } else {
+        djStageOverlayImgRef.current = imgOverlay;
+      }
     };
   }, []);
 
