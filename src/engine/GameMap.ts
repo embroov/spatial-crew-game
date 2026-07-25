@@ -5,8 +5,8 @@ export class GameMap {
   public static readonly MAP_WIDTH = 5000;
   public static readonly MAP_HEIGHT = 3500;
 
-  // Clear Open Floor Spawn at Central Plaza Fountain
-  public static readonly SPAWN_POS: Position = { x: 2500, y: 1600 };
+  // Clear Open Floor Spawn safely in front of Central Plaza Fountain
+  public static readonly SPAWN_POS: Position = { x: 2500, y: 1850 };
 
   // 10 Themed Social Zones across the 5000x3500 Metaverse Plaza
   public static readonly ROOMS: MapRoomZone[] = [
@@ -118,14 +118,14 @@ export class GameMap {
     { x: 200, y: 1300, width: 30, height: 1000 },
     { x: 200, y: 2270, width: 1300, height: 30 },
     { x: 1470, y: 1300, width: 30, height: 350 },
-    { x: 1470, y: 1950, width: 30, height: 350 }, // OPEN DOORWAY at Y: 1650..1950 (Facing Central Plaza)
+    { x: 1470, y: 1950, width: 30, height: 350 }, // OPEN DOORWAY at Y: 1650..1950
 
     // --- DJ Stage & Dance Floor (3500, 1300, 1300, 1000) ---
     { x: 3500, y: 1300, width: 1300, height: 30 },
     { x: 4770, y: 1300, width: 30, height: 1000 },
     { x: 3500, y: 2270, width: 1300, height: 30 },
     { x: 3500, y: 1300, width: 30, height: 350 },
-    { x: 3500, y: 1950, width: 30, height: 350 }, // OPEN DOORWAY at Y: 1650..1950 (Facing Central Plaza)
+    { x: 3500, y: 1950, width: 30, height: 350 }, // OPEN DOORWAY at Y: 1650..1950
 
     // --- Sunset Terrace Café (300, 2500, 1300, 800) ---
     { x: 300, y: 2500, width: 500, height: 30 },
@@ -136,7 +136,7 @@ export class GameMap {
 
     // --- Courtyard Stage (1800, 2400, 1400, 900) ---
     { x: 1800, y: 2400, width: 500, height: 30 },
-    { x: 2700, y: 2400, width: 500, height: 30 }, // OPEN DOORWAY at X: 2300..2700 (Facing Central Plaza)
+    { x: 2700, y: 2400, width: 500, height: 30 }, // OPEN DOORWAY at X: 2300..2700
     { x: 1800, y: 2400, width: 30, height: 900 },
     { x: 3170, y: 2400, width: 30, height: 900 },
     { x: 1800, y: 3270, width: 1400, height: 30 },
@@ -148,8 +148,8 @@ export class GameMap {
     { x: 4670, y: 2500, width: 30, height: 800 },
     { x: 3400, y: 3270, width: 1300, height: 30 },
 
-    // Central Fountain Obstacle (Radius 90 around x:2500, y:1600)
-    { x: 2410, y: 1510, width: 180, height: 180 },
+    // Central Fountain Obstacle (Centered at x:2500, y:1500)
+    { x: 2440, y: 1440, width: 120, height: 120 },
   ];
 
   /**

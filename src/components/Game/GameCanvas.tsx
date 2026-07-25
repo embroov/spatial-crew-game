@@ -48,8 +48,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const keysRef = useRef<{ [key: string]: boolean }>({});
   const walkDistanceRef = useRef<number>(0);
 
+  const loungeBarImgRef = useRef<HTMLImageElement | null>(null);
+  const gameRoomImgRef = useRef<HTMLImageElement | null>(null);
+
   const [currentRoom, setCurrentRoom] = useState<string>('Central Cyber Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
+
+  // Sync position ref when local player joins or respawns
+  useEffect(() => {
+    posRef.current = { ...localPlayer.position };
+  }, [localPlayer.id]);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -251,10 +259,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             }
           }
 
-          // 3. Central Fountain Monument (x: 2500, y: 1600)
-          const fountainRadius = 90 + Math.sin(now / 150) * 4;
+          // 3. Central Fountain Monument (Centered at x: 2500, y: 1500)
+          const fountainRadius = 60 + Math.sin(now / 150) * 4;
           ctx.beginPath();
-          ctx.arc(2500, 1600, fountainRadius, 0, Math.PI * 2);
+          ctx.arc(2500, 1500, fountainRadius, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(14, 165, 233, 0.25)';
           ctx.fill();
           ctx.strokeStyle = '#38bdf8';
@@ -263,7 +271,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
           // Fountain Inner Water Ring
           ctx.beginPath();
-          ctx.arc(2500, 1600, 45, 0, Math.PI * 2);
+          ctx.arc(2500, 1500, 30, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
           ctx.fill();
           ctx.strokeStyle = '#7dd3fc';
@@ -271,9 +279,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.stroke();
 
           ctx.fillStyle = '#e0f2fe';
-          ctx.font = 'bold 16px system-ui, sans-serif';
+          ctx.font = 'bold 14px system-ui, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('✨ CENTRAL CYBER FOUNTAIN ✨', 2500, 1605);
+          ctx.fillText('✨ CYBER FOUNTAIN ✨', 2500, 1505);
 
           // 4. Wall Partitions & Glowing Entry Doorways
           for (const wall of GameMap.WALLS) {
@@ -574,7 +582,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           onTouchEnd={() => handleVirtualPress('shift', false)}
           className={`w-full py-1.5 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
             isSprintingState
-              ? 'bg-amber500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/30'
+              ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/30'
               : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
           }`}
         >
