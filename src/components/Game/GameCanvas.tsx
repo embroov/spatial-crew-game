@@ -335,7 +335,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.stroke();
             }
 
-            // Draw Animated 2D Character Body with Hands & Gesture
+            // Draw Animated 2D Character Body with Hands & Unique Emote Gestures
             draw2DCharacter(
               ctx,
               pX,
@@ -351,23 +351,23 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
             // Floating Animated Emote Bubble (Strict 3-second limit check)
             if (activeEmote) {
-              const bubbleY = pY - 54;
-              const bounce = Math.sin(now / 120) * 3;
+              const bubbleY = pY - 56;
+              const bounce = Math.sin(now / 100) * 4;
 
               ctx.save();
               ctx.translate(pX, bubbleY + bounce);
 
               // Glossy Emote Bubble
               ctx.beginPath();
-              ctx.arc(0, 0, 18, 0, Math.PI * 2);
+              ctx.arc(0, 0, 19, 0, Math.PI * 2);
               ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
               ctx.fill();
-              ctx.strokeStyle = '#60a5fa';
+              ctx.strokeStyle = '#c084fc';
               ctx.lineWidth = 2;
               ctx.stroke();
 
               // Emote Emoji Text
-              ctx.font = '18px sans-serif';
+              ctx.font = '19px sans-serif';
               ctx.textAlign = 'center';
               ctx.fillText(activeEmote, 0, 6);
 
@@ -598,7 +598,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
 /**
  * Custom 2D Character Renderer with visible hands, stride sway, 
- * active emote gestures (wave, dance, raise), torso suit, and head visor
+ * active emote gestures (wave, dance, raise, clap, hype, fire, love, laugh, thumbs-up), torso suit, and head visor
  */
 function draw2DCharacter(
   ctx: CanvasRenderingContext2D,
@@ -615,10 +615,29 @@ function draw2DCharacter(
   ctx.save();
   ctx.translate(x, y);
 
-  // Dance emote body sway
+  // --- UNIQUE EMOTE BODY MOTIONS ---
   if (activeEmote === '💃') {
-    const danceOffset = Math.sin(now / 80) * 4;
-    ctx.translate(danceOffset, Math.abs(Math.sin(now / 100)) * -3);
+    // Dance Emote: Side-to-side body sway & vertical hop
+    const danceOffset = Math.sin(now / 70) * 5;
+    ctx.translate(danceOffset, Math.abs(Math.sin(now / 90)) * -4);
+  } else if (activeEmote === '❤️') {
+    // Love Emote: Floating up and down gently
+    ctx.translate(0, Math.sin(now / 150) * 4);
+  } else if (activeEmote === '😂') {
+    // Laugh Emote: Rapid body shaking up and down
+    ctx.translate(0, Math.sin(now / 30) * 3);
+  } else if (activeEmote === '👍') {
+    // Thumbs Up Emote: Rhythmic body nod
+    ctx.translate(0, Math.sin(now / 120) * 2);
+  } else if (activeEmote === '🔥') {
+    // Fire Emote: Energetic high power bounce
+    ctx.translate(0, Math.abs(Math.sin(now / 60)) * -5);
+  } else if (activeEmote === '⚡') {
+    // Hype Emote: Wild body spin vibration
+    ctx.rotate(Math.sin(now / 50) * 0.15);
+  } else if (activeEmote === '🎉') {
+    // Party Emote: Celebration jump
+    ctx.translate(0, Math.abs(Math.sin(now / 100)) * -7);
   }
 
   // 1. Oval Drop Shadow beneath feet
@@ -627,8 +646,8 @@ function draw2DCharacter(
   ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
   ctx.fill();
 
-  // 2. Leg Walking Animation Stride Calculation
-  const stridePhase = speedFactor > 0 ? Math.sin(totalDistance * 0.08) : 0;
+  // 2. Leg Walking / Emote Motion Stride
+  const stridePhase = speedFactor > 0 ? Math.sin(totalDistance * 0.08) : (activeEmote === '🔥' ? Math.sin(now / 60) : 0);
   const leftLegY = stridePhase * 7;
   const rightLegY = -stridePhase * 7;
 
@@ -660,7 +679,7 @@ function draw2DCharacter(
   ctx.fillStyle = '#1e293b';
   ctx.fillRect(-14, 6, 28, 4);
 
-  // 4. VISIBLE HANDS & ARMS GESTURE ANIMATION
+  // 4. VISIBLE HANDS & UNIQUE EMOTE GESTURE ANIMATIONS
   const armSway = speedFactor > 0 ? Math.sin(totalDistance * 0.08) * 5 : 0;
 
   let leftHandY = -2 - armSway;
@@ -668,19 +687,54 @@ function draw2DCharacter(
   let rightHandX = 18;
   let leftHandX = -18;
 
-  // Emote Gesture Overrides
+  // --- UNIQUE HAND GESTURE OVERRIDES FOR ALL 9 EMOTES ---
   if (activeEmote === '👋') {
-    // Wave Emote: Right hand raised up & waving
-    rightHandX = 16 + Math.sin(now / 70) * 6;
-    rightHandY = -22;
+    // Wave Emote: Right hand raised high & waving rapid side-to-side
+    rightHandX = 16 + Math.sin(now / 60) * 8;
+    rightHandY = -24;
   } else if (activeEmote === '💃') {
-    // Dance Emote: Both hands bopping up and down
-    leftHandY = -14 + Math.sin(now / 90) * 6;
-    rightHandY = -14 - Math.sin(now / 90) * 6;
-  } else if (activeEmote) {
-    // Celebration / Love / Thumbs Up / Fire / Hype / Clap: Both hands raised up
-    leftHandY = -16;
-    rightHandY = -16;
+    // Dance Emote: Alternating hands bopping high & low
+    leftHandY = -16 + Math.sin(now / 80) * 8;
+    rightHandY = -16 - Math.sin(now / 80) * 8;
+  } else if (activeEmote === '❤️') {
+    // Love Emote: Both hands joined together in center making a heart pose
+    leftHandX = -6;
+    rightHandX = 6;
+    leftHandY = -8;
+    rightHandY = -8;
+  } else if (activeEmote === '😂') {
+    // Laugh Emote: Both hands holding stomach/sides
+    leftHandX = -10;
+    rightHandX = 10;
+    leftHandY = 4;
+    rightHandY = 4;
+  } else if (activeEmote === '👍') {
+    // Thumbs Up Emote: Right hand raised in static strong thumbs up gesture, left hand on hip
+    rightHandX = 18;
+    rightHandY = -24;
+    leftHandX = -14;
+    leftHandY = 2;
+  } else if (activeEmote === '🔥') {
+    // Fire Emote: Both hands pumping up and down rapidly
+    leftHandY = -18 + Math.sin(now / 50) * 6;
+    rightHandY = -18 - Math.sin(now / 50) * 6;
+  } else if (activeEmote === '⚡') {
+    // Hype Emote: Arms stretched out wide in power pose
+    leftHandX = -24;
+    rightHandX = 24;
+    leftHandY = -18 + Math.sin(now / 60) * 4;
+    rightHandY = -18 + Math.cos(now / 60) * 4;
+  } else if (activeEmote === '👏') {
+    // Clap Emote: Hands rapidly clapping together in front of chest
+    const clapOffset = Math.sin(now / 40) * 6;
+    leftHandX = -6 - clapOffset;
+    rightHandX = 6 + clapOffset;
+    leftHandY = -4;
+    rightHandY = -4;
+  } else if (activeEmote === '🎉') {
+    // Party Emote: Both hands raised high in triumph
+    leftHandY = -22 + Math.sin(now / 80) * 4;
+    rightHandY = -22 - Math.sin(now / 80) * 4;
   }
 
   // Draw Left Hand (Globe)
