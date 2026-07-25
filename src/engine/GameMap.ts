@@ -126,6 +126,8 @@ export class GameMap {
     { x: 3500, y: 2270, width: 1300, height: 30 },
     { x: 3500, y: 1300, width: 30, height: 350 },
     { x: 3500, y: 1950, width: 30, height: 350 }, // OPEN DOORWAY at Y: 1650..1950
+    // Invisible Solid Stage Obstacle Boundary (upper side of DJ room)
+    { x: 3750, y: 1330, width: 800, height: 460 },
 
     // --- Sunset Terrace Café (300, 2500, 1300, 800) ---
     { x: 300, y: 2500, width: 500, height: 30 },

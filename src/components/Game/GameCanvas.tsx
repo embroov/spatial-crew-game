@@ -51,6 +51,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const loungeBarImgRef = useRef<HTMLImageElement | null>(null);
   const gameRoomImgRef = useRef<HTMLImageElement | null>(null);
   const djStageImgRef = useRef<HTMLImageElement | null>(null);
+  const djStageOverlayImgRef = useRef<HTMLImageElement | null>(null);
 
   const [currentRoom, setCurrentRoom] = useState<string>('Central Cyber Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
@@ -66,6 +67,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     imgDJ.src = '/dj_stage.jpg';
     imgDJ.onload = () => {
       djStageImgRef.current = imgDJ;
+    };
+
+    const imgOverlay = new Image();
+    imgOverlay.src = '/dj_stage_overlay.png';
+    imgOverlay.onload = () => {
+      djStageOverlayImgRef.current = imgOverlay;
     };
   }, []);
 
@@ -272,8 +279,29 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.fillRect(room.x, room.y, room.width, room.height);
 
             // Render Custom High-Res Image for DJ Stage & Dance Floor
-            if (room.name === 'DJ Stage & Dance Floor' && djStageImgRef.current) {
-              ctx.drawImage(djStageImgRef.current, room.x, room.y, room.width, room.height);
+            if (room.name === 'DJ Stage & Dance Floor') {
+              if (djStageImgRef.current) {
+                ctx.drawImage(djStageImgRef.current, room.x, room.y, room.width, room.height);
+              }
+
+              // Render Elevated DJ Stage Overlay Graphic in Upper Side with Soft Realistic Shadow
+              if (djStageOverlayImgRef.current) {
+                const stgX = room.x + 250; // 3750
+                const stgY = room.y + 30;  // 1330
+                const stgW = 800;
+                const stgH = 480;
+
+                // Realistic Soft Stage Drop Shadow
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.beginPath();
+                ctx.ellipse(stgX + stgW / 2 + 15, stgY + stgH / 2 + 25, stgW / 2 + 10, stgH / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // Stage Graphic
+                ctx.drawImage(djStageOverlayImgRef.current, stgX, stgY, stgW, stgH);
+              }
             } else {
               // Glowing Room Border Outline
               ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
