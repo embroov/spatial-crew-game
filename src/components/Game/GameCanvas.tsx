@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Player, Position } from '../../types/game';
 import { GameMap } from '../../engine/GameMap';
 import type { SpatialAudioEngine } from '../../engine/SpatialAudioEngine';
-import { Smile, X } from 'lucide-react';
+import { Smile, X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 interface GameCanvasProps {
   localPlayer: Player;
@@ -53,6 +53,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const [currentRoom, setCurrentRoom] = useState<string>('Central Cyber Plaza');
   const [isSprintingState, setIsSprintingState] = useState<boolean>(false);
+  const [zoomScale, setZoomScale] = useState<number>(1.0); // Camera POV Zoom (0.5x to 1.6x)
+
+  const handleZoomIn = () => setZoomScale((prev) => Math.min(1.6, Math.round((prev + 0.15) * 100) / 100));
+  const handleZoomOut = () => setZoomScale((prev) => Math.max(0.5, Math.round((prev - 0.15) * 100) / 100));
+  const handleResetZoom = () => setZoomScale(1.0);
 
   // Sync position ref when local player joins or respawns
   useEffect(() => {
@@ -65,8 +70,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     }
   }, []);
 
-  // Middle mouse click listener to toggle cursor visibility
+  // Mouse Wheel Zoom & Middle Click listeners
   useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        handleZoomIn();
+      } else {
+        handleZoomOut();
+      }
+    };
+
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button === 1) {
         e.preventDefault();
@@ -74,11 +88,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
     };
 
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false });
+    }
     window.addEventListener('mousedown', handleMouseDown);
-    return () => window.removeEventListener('mousedown', handleMouseDown);
+
+    return () => {
+      if (container) {
+        container.removeEventListener('wheel', handleWheel);
+      }
+      window.removeEventListener('mousedown', handleMouseDown);
+    };
   }, [onToggleHideCursor]);
 
-  // WASD, Arrow Key, Shift Sprint & Emote Hotkeys listeners
+  // WASD, Arrow Key, Shift Sprint & Hotkeys listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
@@ -99,6 +123,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       if (key === 'shift' || code === 'ShiftLeft' || code === 'ShiftRight') {
         setIsSprintingState(true);
+      }
+
+      if (key === '=' || key === '+') {
+        handleZoomIn();
+      } else if (key === '-' || key === '_') {
+        handleZoomOut();
+      } else if (key === '0') {
+        handleResetZoom();
       }
 
       // Number keys 1-9 for instant emote
@@ -130,7 +162,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     };
   }, [onSendEmote]);
 
-  // Main 60 FPS Game Loop
+  // Main 60 FPS Game Loop with Camera POV Zoom
   useEffect(() => {
     let animationId: number;
     let lastTime = performance.now();
@@ -196,10 +228,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fillStyle = '#030712';
           ctx.fillRect(0, 0, width, height);
 
-          const camX = width / 2 - posRef.current.x;
-          const camY = height / 2 - posRef.current.y;
+          // Apply POV Camera Scale Transform
+          const camX = width / (2 * zoomScale) - posRef.current.x;
+          const camY = height / (2 * zoomScale) - posRef.current.y;
 
           ctx.save();
+          ctx.scale(zoomScale, zoomScale);
           ctx.translate(camX, camY);
 
           // 1. Grid Cyber Floor Background
@@ -237,7 +271,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
             // Distinct Room Floor Features
             if (room.name === 'DJ Stage & Dance Floor') {
-              // Glowing Neon Dance Grid
               const tSize = 100;
               for (let rx = room.x + 100; rx < room.x + room.width - 100; rx += tSize) {
                 for (let ry = room.y + 200; ry < room.y + room.height - 100; ry += tSize) {
@@ -247,7 +280,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 }
               }
             } else if (room.name === 'VIP Skylounge & Bar') {
-              // VIP Bar Counter Top
               ctx.fillStyle = '#3b0764';
               ctx.fillRect(room.x + 200, room.y + 200, 900, 80);
               ctx.strokeStyle = '#c084fc';
@@ -259,7 +291,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             }
           }
 
-          // 3. Central Fountain Monument (Centered at x: 2500, y: 1500)
+          // 3. Central Fountain Monument
           const fountainRadius = 60 + Math.sin(now / 150) * 4;
           ctx.beginPath();
           ctx.arc(2500, 1500, fountainRadius, 0, Math.PI * 2);
@@ -269,7 +301,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.lineWidth = 4;
           ctx.stroke();
 
-          // Fountain Inner Water Ring
           ctx.beginPath();
           ctx.arc(2500, 1500, 30, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
@@ -293,7 +324,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
           }
 
-          // 5. Doorway Entry Arch Indicators (Glowing green entry pads)
+          // 5. Doorway Entry Arch Indicators
           const doorPads = [
             { name: "VIP Bar Entry", x: 750, y: 1070, w: 350, h: 30 },
             { name: "Observatory Entry", x: 3850, y: 1070, w: 350, h: 30 },
@@ -346,11 +377,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const dist = Math.hypot(pX - posRef.current.x, pY - posRef.current.y);
             const inVoiceRange = dist <= config.maxDistance;
 
-            // Strict 3-second active emote limit check against realTimeNow
             const activeEmoteObj = isMe ? localPlayer.activeEmote : p.activeEmote;
             const activeEmote = activeEmoteObj && activeEmoteObj.expiresAt > realTimeNow ? activeEmoteObj.emoji : undefined;
 
-            // Sprint Speed Trail Effect
             if (isMe && isSprinting && isMoving) {
               for (let i = 1; i <= 3; i++) {
                 const trailX = pX - Math.cos(facing) * (i * 16);
@@ -362,7 +391,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               }
             }
 
-            // Voice Talking Aura Pulse
             if (p.isTalking && !p.isMuted) {
               const pulseSize = 34 + Math.sin(now / 100) * 5;
               ctx.beginPath();
@@ -375,7 +403,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.stroke();
             }
 
-            // Draw Animated 2D Character Body with Hands & Unique Emote Gestures
             draw2DCharacter(
               ctx,
               pX,
@@ -389,7 +416,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               now
             );
 
-            // Floating Animated Emote Bubble (Strict 3-second limit check)
             if (activeEmote) {
               const bubbleY = pY - 56;
               const bounce = Math.sin(now / 100) * 4;
@@ -397,7 +423,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.save();
               ctx.translate(pX, bubbleY + bounce);
 
-              // Glossy Emote Bubble
               ctx.beginPath();
               ctx.arc(0, 0, 19, 0, Math.PI * 2);
               ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
@@ -406,7 +431,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.lineWidth = 2;
               ctx.stroke();
 
-              // Emote Emoji Text
               ctx.font = '19px sans-serif';
               ctx.textAlign = 'center';
               ctx.fillText(activeEmote, 0, 6);
@@ -414,14 +438,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.restore();
             }
 
-            // Name Tag BELOW feet (y + 40)
             const nameY = pY + 40;
             ctx.fillStyle = isMe ? '#60a5fa' : inVoiceRange ? '#f8fafc' : '#94a3b8';
             ctx.font = `bold ${isMe ? '14px' : '12px'} system-ui, sans-serif`;
             ctx.textAlign = 'center';
             ctx.fillText(p.name + (isMe ? ' (You)' : ''), pX, nameY);
 
-            // Distance Meter below name tag (y + 54)
             if (!isMe) {
               const distanceText = `${Math.round(dist / 10)}m`;
               ctx.fillStyle = inVoiceRange ? '#34d399' : '#64748b';
@@ -439,7 +461,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
     animationId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animationId);
-  }, [players, localPlayer, showAudioRadius, audioEngine, onPositionUpdate]);
+  }, [players, localPlayer, showAudioRadius, audioEngine, onPositionUpdate, zoomScale]);
 
   const handleVirtualPress = (dir: string, active: boolean) => {
     keysRef.current[dir] = active;
@@ -450,7 +472,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const handleSelectEmoteInModal = (emoji: string) => {
     onSendEmote(emoji);
-    onToggleEmotePicker(); // Close modal after picking
+    onToggleEmotePicker();
   };
 
   return (
@@ -485,13 +507,44 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-blue-400 border border-slate-700">M</kbd> Map</span>
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-blue-400 border border-slate-700">U</kbd> Mic</span>
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-purple-400 border border-slate-700">E</kbd> Emotes</span>
-          <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-amber-400 border border-slate-700">MidClick</kbd> Hide Cursor</span>
+          <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-amber-400 border border-slate-700">Wheel</kbd> Zoom</span>
         </div>
 
         <div className="px-3.5 py-2 bg-slate-900/80 border border-slate-800 backdrop-blur-md rounded-xl text-slate-200 text-xs font-medium shadow-lg flex items-center gap-2">
           <span className="text-slate-400">Zone:</span>
           <span className="font-bold text-emerald-400">📍 {currentRoom}</span>
         </div>
+      </div>
+
+      {/* CAMERA POV ZOOM CONTROL WIDGET (Top Right) */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-slate-900/90 border border-slate-800 backdrop-blur-xl p-1.5 rounded-2xl shadow-2xl font-sans">
+        <button
+          type="button"
+          onClick={handleZoomOut}
+          className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 transition-colors cursor-pointer"
+          title="Zoom Out Camera (-)"
+        >
+          <ZoomOut className="w-4 h-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={handleResetZoom}
+          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-mono font-bold text-xs rounded-xl border border-slate-700 transition-colors cursor-pointer flex items-center gap-1"
+          title="Reset Camera POV Level (1.0x)"
+        >
+          <Maximize2 className="w-3 h-3" />
+          <span>{Math.round(zoomScale * 100)}%</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleZoomIn}
+          className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 transition-colors cursor-pointer"
+          title="Zoom In Camera (+)"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </button>
       </div>
 
       {/* QUICK EMOTE PICKER HUD BUTTON (Bottom Center) */}
@@ -514,7 +567,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         </button>
       </div>
 
-      {/* PROMINENT CENTER EMOTE PICKER MODAL (Triggers when E is pressed) */}
+      {/* PROMINENT CENTER EMOTE PICKER MODAL */}
       {showEmotePicker && (
         <div className="absolute inset-0 z-30 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150 font-sans">
           <div className="bg-slate-900/95 border border-purple-500/40 rounded-3xl p-6 shadow-2xl max-w-sm w-full relative">
@@ -655,28 +708,20 @@ function draw2DCharacter(
   ctx.save();
   ctx.translate(x, y);
 
-  // --- UNIQUE EMOTE BODY MOTIONS ---
   if (activeEmote === '💃') {
-    // Dance Emote: Side-to-side body sway & vertical hop
     const danceOffset = Math.sin(now / 70) * 5;
     ctx.translate(danceOffset, Math.abs(Math.sin(now / 90)) * -4);
   } else if (activeEmote === '❤️') {
-    // Love Emote: Floating up and down gently
     ctx.translate(0, Math.sin(now / 150) * 4);
   } else if (activeEmote === '😂') {
-    // Laugh Emote: Rapid body shaking up and down
     ctx.translate(0, Math.sin(now / 30) * 3);
   } else if (activeEmote === '👍') {
-    // Thumbs Up Emote: Rhythmic body nod
     ctx.translate(0, Math.sin(now / 120) * 2);
   } else if (activeEmote === '🔥') {
-    // Fire Emote: Energetic high power bounce
     ctx.translate(0, Math.abs(Math.sin(now / 60)) * -5);
   } else if (activeEmote === '⚡') {
-    // Hype Emote: Wild body spin vibration
     ctx.rotate(Math.sin(now / 50) * 0.15);
   } else if (activeEmote === '🎉') {
-    // Party Emote: Celebration jump
     ctx.translate(0, Math.abs(Math.sin(now / 100)) * -7);
   }
 
@@ -727,52 +772,42 @@ function draw2DCharacter(
   let rightHandX = 18;
   let leftHandX = -18;
 
-  // --- UNIQUE HAND GESTURE OVERRIDES FOR ALL 9 EMOTES ---
   if (activeEmote === '👋') {
-    // Wave Emote: Right hand raised high & waving rapid side-to-side
     rightHandX = 16 + Math.sin(now / 60) * 8;
     rightHandY = -24;
   } else if (activeEmote === '💃') {
-    // Dance Emote: Alternating hands bopping high & low
     leftHandY = -16 + Math.sin(now / 80) * 8;
     rightHandY = -16 - Math.sin(now / 80) * 8;
   } else if (activeEmote === '❤️') {
-    // Love Emote: Both hands joined together in center making a heart pose
     leftHandX = -6;
     rightHandX = 6;
     leftHandY = -8;
     rightHandY = -8;
   } else if (activeEmote === '😂') {
-    // Laugh Emote: Both hands holding stomach/sides
     leftHandX = -10;
     rightHandX = 10;
     leftHandY = 4;
     rightHandY = 4;
   } else if (activeEmote === '👍') {
-    // Thumbs Up Emote: Right hand raised in static strong thumbs up gesture, left hand on hip
     rightHandX = 18;
     rightHandY = -24;
     leftHandX = -14;
     leftHandY = 2;
   } else if (activeEmote === '🔥') {
-    // Fire Emote: Both hands pumping up and down rapidly
     leftHandY = -18 + Math.sin(now / 50) * 6;
     rightHandY = -18 - Math.sin(now / 50) * 6;
   } else if (activeEmote === '⚡') {
-    // Hype Emote: Arms stretched out wide in power pose
     leftHandX = -24;
     rightHandX = 24;
     leftHandY = -18 + Math.sin(now / 60) * 4;
     rightHandY = -18 + Math.cos(now / 60) * 4;
   } else if (activeEmote === '👏') {
-    // Clap Emote: Hands rapidly clapping together in front of chest
     const clapOffset = Math.sin(now / 40) * 6;
     leftHandX = -6 - clapOffset;
     rightHandX = 6 + clapOffset;
     leftHandY = -4;
     rightHandY = -4;
   } else if (activeEmote === '🎉') {
-    // Party Emote: Both hands raised high in triumph
     leftHandY = -22 + Math.sin(now / 80) * 4;
     rightHandY = -22 - Math.sin(now / 80) * 4;
   }
