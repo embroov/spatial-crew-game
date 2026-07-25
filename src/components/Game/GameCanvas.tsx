@@ -108,7 +108,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         setIsSprintingState(true);
       }
 
-      if (key === 'e') {
+      if (key === 'e' || code === 'KeyE') {
+        e.preventDefault();
         setShowEmotePicker((prev) => !prev);
       }
 
@@ -296,7 +297,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.stroke();
           }
 
-          // Render Players as 2D Animated Characters with Hands & Emotes
+          // Render Players as 2D Animated Characters
           players.forEach((p) => {
             const isMe = p.id === localPlayer.id;
             const pX = isMe ? posRef.current.x : p.position.x;
@@ -306,7 +307,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const dist = Math.hypot(pX - posRef.current.x, pY - posRef.current.y);
             const inVoiceRange = dist <= config.maxDistance;
 
-            const activeEmote = p.activeEmote && p.activeEmote.expiresAt > now ? p.activeEmote.emoji : undefined;
+            // Strict 3-second active emote limit check
+            const activeEmoteObj = isMe ? localPlayer.activeEmote : p.activeEmote;
+            const activeEmote = activeEmoteObj && activeEmoteObj.expiresAt > now ? activeEmoteObj.emoji : undefined;
 
             // Sprint Speed Trail Effect
             if (isMe && isSprinting && isMoving) {
@@ -347,9 +350,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               now
             );
 
-            // Floating Animated Emote Bubble above character head
+            // Floating Animated Emote Bubble (3-second limit with smooth bounce)
             if (activeEmote) {
-              const bubbleY = pY - 64;
+              const bubbleY = pY - 54;
               const bounce = Math.sin(now / 120) * 3;
 
               ctx.save();
@@ -371,18 +374,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
               ctx.restore();
             }
-
-            // Mic Status Badge (y - 42)
-            const badgeY = pY - 42;
-            ctx.fillStyle = p.isMuted ? '#ef4444' : p.isTalking ? '#10b981' : '#64748b';
-            ctx.beginPath();
-            ctx.arc(pX, badgeY, 9, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 10px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(p.isMuted ? '✕' : p.isTalking ? '🔊' : '🎙️', pX, badgeY + 3.5);
 
             // Name Tag BELOW feet (y + 40)
             const nameY = pY + 40;
@@ -482,20 +473,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         <div className={`flex items-center gap-1.5 transition-all duration-200 ${
           showEmotePicker ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none hidden sm:flex sm:opacity-100 sm:scale-100 sm:pointer-events-auto'
         }`}>
-          {AVAILABLE_EMOTES.map((em, idx) => (
-            <button
-              key={em.name}
-              type="button"
-              onClick={() => onSendEmote(em.emoji)}
-              className="w-9 h-9 bg-slate-800/90 hover:bg-purple-600/30 hover:border-purple-500/60 active:scale-95 text-base rounded-xl border border-slate-700/80 flex items-center justify-center transition-all cursor-pointer relative group"
-              title={`${em.name} (Hotkey ${idx + 1})`}
-            >
-              <span>{em.emoji}</span>
-              <span className="absolute -top-6 text-[9px] font-mono font-bold bg-slate-950 text-slate-400 border border-slate-800 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                {idx + 1}
-              </span>
-            </button>
-          ))}
+          {AVAILABLE_EMOTES.map((em, idx) => {
+            const isEmoteActive = localPlayer.activeEmote?.emoji === em.emoji && (localPlayer.activeEmote?.expiresAt || 0) > Date.now();
+            return (
+              <button
+                key={em.name}
+                type="button"
+                onClick={() => onSendEmote(em.emoji)}
+                className={`w-9 h-9 active:scale-95 text-base rounded-xl border flex items-center justify-center transition-all cursor-pointer relative group ${
+                  isEmoteActive
+                    ? 'bg-purple-600 border-purple-400 ring-2 ring-purple-400/50 shadow-lg animate-pulse'
+                    : 'bg-slate-800/90 hover:bg-purple-600/30 hover:border-purple-500/60 border-slate-700/80'
+                }`}
+                title={`${em.name} (Hotkey ${idx + 1}) - Click to ${isEmoteActive ? 'Stop' : 'Play'}`}
+              >
+                <span>{em.emoji}</span>
+                <span className="absolute -top-6 text-[9px] font-mono font-bold bg-slate-950 text-slate-400 border border-slate-800 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                  {idx + 1}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

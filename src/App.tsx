@@ -129,10 +129,13 @@ export function App() {
       },
       onPlayersUpdate: (updatedPlayers) => {
         setPlayers((prevPlayers) => {
-          // Preserve activeEmote state when positions update
+          // Preserve unexpired activeEmote state
+          const now = Date.now();
           return updatedPlayers.map((newP) => {
             const existing = prevPlayers.find((p) => p.id === newP.id);
-            return existing?.activeEmote ? { ...newP, activeEmote: existing.activeEmote } : newP;
+            return existing?.activeEmote && existing.activeEmote.expiresAt > now
+              ? { ...newP, activeEmote: existing.activeEmote }
+              : newP;
           });
         });
       },
@@ -140,7 +143,7 @@ export function App() {
         setMessages((prev) => [...prev.slice(-49), msg]);
       },
       onEmoteReceived: (emote: EmoteNotification) => {
-        const expiresAt = Date.now() + 3500;
+        const expiresAt = Date.now() + 3000;
         setPlayers((prev) =>
           prev.map((p) => (p.id === emote.playerId ? { ...p, activeEmote: { emoji: emote.emoji, expiresAt } } : p))
         );
@@ -165,17 +168,32 @@ export function App() {
   };
 
   const handleSendEmote = (emoji: string) => {
-    const expiresAt = Date.now() + 3500;
-    setLocalPlayer((prev) => ({
-      ...prev,
-      activeEmote: { emoji, expiresAt },
-    }));
+    const now = Date.now();
+    const isSameEmoteActive =
+      localPlayer.activeEmote?.emoji === emoji && localPlayer.activeEmote.expiresAt > now;
 
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === localPlayer.id ? { ...p, activeEmote: { emoji, expiresAt } } : p))
-    );
-
-    socketServiceRef.current.sendEmote(emoji);
+    if (isSameEmoteActive) {
+      // Toggle off / Stop emote if clicking same button again
+      setLocalPlayer((prev) => ({
+        ...prev,
+        activeEmote: undefined,
+      }));
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === localPlayer.id ? { ...p, activeEmote: undefined } : p))
+      );
+      socketServiceRef.current.sendEmote('');
+    } else {
+      // Start 3-second limited emote
+      const expiresAt = now + 3000;
+      setLocalPlayer((prev) => ({
+        ...prev,
+        activeEmote: { emoji, expiresAt },
+      }));
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === localPlayer.id ? { ...p, activeEmote: { emoji, expiresAt } } : p))
+      );
+      socketServiceRef.current.sendEmote(emoji);
+    }
   };
 
   const handleLeaveServer = () => {
