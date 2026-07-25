@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Player, Position } from '../../types/game';
 import { GameMap } from '../../engine/GameMap';
 import type { SpatialAudioEngine } from '../../engine/SpatialAudioEngine';
-import { Smile } from 'lucide-react';
+import { Smile, X } from 'lucide-react';
 
 interface GameCanvasProps {
   localPlayer: Player;
@@ -18,15 +18,15 @@ interface GameCanvasProps {
 }
 
 const AVAILABLE_EMOTES = [
-  { emoji: '👋', name: 'Wave' },
-  { emoji: '💃', name: 'Dance' },
-  { emoji: '❤️', name: 'Love' },
-  { emoji: '😂', name: 'Laugh' },
-  { emoji: '👍', name: 'Thumbs Up' },
-  { emoji: '🔥', name: 'Fire' },
-  { emoji: '⚡', name: 'Hype' },
-  { emoji: '👏', name: 'Clap' },
-  { emoji: '🎉', name: 'Party' },
+  { emoji: '👋', name: 'Wave', hotkey: '1' },
+  { emoji: '💃', name: 'Dance', hotkey: '2' },
+  { emoji: '❤️', name: 'Love', hotkey: '3' },
+  { emoji: '😂', name: 'Laugh', hotkey: '4' },
+  { emoji: '👍', name: 'Thumbs Up', hotkey: '5' },
+  { emoji: '🔥', name: 'Fire', hotkey: '6' },
+  { emoji: '⚡', name: 'Hype', hotkey: '7' },
+  { emoji: '👏', name: 'Clap', hotkey: '8' },
+  { emoji: '🎉', name: 'Party', hotkey: '9' },
 ];
 
 export const GameCanvas: React.FC<GameCanvasProps> = ({
@@ -88,7 +88,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     return () => window.removeEventListener('mousedown', handleMouseDown);
   }, [onToggleHideCursor]);
 
-  // WASD, Arrow Key & Shift Sprint listeners
+  // WASD, Arrow Key, Shift Sprint & Emote Hotkeys listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
@@ -408,6 +408,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     }
   };
 
+  const handleSelectEmoteInModal = (emoji: string) => {
+    onSendEmote(emoji);
+    onToggleEmotePicker(); // Close modal after picking
+  };
+
   return (
     <div
       ref={containerRef}
@@ -449,52 +454,83 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         </div>
       </div>
 
-      {/* QUICK EMOTE PICKER HUD BAR (Bottom Center) */}
+      {/* QUICK EMOTE PICKER HUD BUTTON (Bottom Center) */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 backdrop-blur-xl p-2 rounded-2xl shadow-2xl">
         <button
           type="button"
           onClick={onToggleEmotePicker}
-          className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+          className={`px-4 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
             showEmotePicker 
-              ? 'bg-purple-600 border-purple-500 text-white shadow-lg' 
+              ? 'bg-purple-600 border-purple-400 text-white shadow-lg ring-2 ring-purple-500/50' 
               : 'bg-slate-800 hover:bg-slate-700 text-purple-300 border-slate-700'
           }`}
-          title="Toggle Emote Menu (E)"
+          title="Press 'E' to open Emote Menu"
         >
-          <Smile className="w-4 h-4 text-purple-300" />
-          <span>Emotes</span>
-          <kbd className="px-1 py-0.2 bg-slate-900 border border-slate-700 rounded text-[10px] font-mono text-purple-300">
+          <Smile className="w-4 h-4 text-purple-300 animate-bounce" />
+          <span>EMOTES MENU</span>
+          <kbd className="px-1.5 py-0.5 bg-slate-950 border border-purple-500/60 rounded text-[10px] font-mono text-purple-300 font-bold">
             E
           </kbd>
         </button>
-
-        {/* Expanded Emotes Buttons */}
-        {showEmotePicker && (
-          <div className="flex items-center gap-1.5 transition-all duration-200">
-            {AVAILABLE_EMOTES.map((em, idx) => {
-              const isEmoteActive = localPlayer.activeEmote?.emoji === em.emoji && (localPlayer.activeEmote?.expiresAt || 0) > Date.now();
-              return (
-                <button
-                  key={em.name}
-                  type="button"
-                  onClick={() => onSendEmote(em.emoji)}
-                  className={`w-9 h-9 active:scale-95 text-base rounded-xl border flex items-center justify-center transition-all cursor-pointer relative group ${
-                    isEmoteActive
-                      ? 'bg-purple-600 border-purple-400 ring-2 ring-purple-400/50 shadow-lg animate-pulse'
-                      : 'bg-slate-800/90 hover:bg-purple-600/30 hover:border-purple-500/60 border-slate-700/80'
-                  }`}
-                  title={`${em.name} (Hotkey ${idx + 1}) - Click to ${isEmoteActive ? 'Stop' : 'Play'}`}
-                >
-                  <span>{em.emoji}</span>
-                  <span className="absolute -top-6 text-[9px] font-mono font-bold bg-slate-950 text-slate-400 border border-slate-800 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                    {idx + 1}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
+
+      {/* PROMINENT CENTER EMOTE PICKER MODAL (Triggers when E is pressed) */}
+      {showEmotePicker && (
+        <div className="absolute inset-0 z-30 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150 font-sans">
+          <div className="bg-slate-900/95 border border-purple-500/40 rounded-3xl p-6 shadow-2xl max-w-sm w-full relative">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Smile className="w-5 h-5 text-purple-400" />
+                <h2 className="text-base font-bold text-slate-100 tracking-wide">Select Character Emote</h2>
+              </div>
+              <button
+                type="button"
+                onClick={onToggleEmotePicker}
+                className="p-1 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg transition-colors cursor-pointer"
+                title="Close (E / Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 mb-4 text-center">
+              Click an emote below or press number keys <kbd className="px-1 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-slate-300 font-bold">1-9</kbd> to perform a 3-second live gesture!
+            </p>
+
+            <div className="grid grid-cols-3 gap-2.5">
+              {AVAILABLE_EMOTES.map((em) => {
+                const isEmoteActive = localPlayer.activeEmote?.emoji === em.emoji && (localPlayer.activeEmote?.expiresAt || 0) > Date.now();
+                return (
+                  <button
+                    key={em.name}
+                    type="button"
+                    onClick={() => handleSelectEmoteInModal(em.emoji)}
+                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer transform hover:scale-105 active:scale-95 ${
+                      isEmoteActive
+                        ? 'bg-purple-600 border-purple-400 text-white ring-2 ring-purple-400/60 shadow-lg animate-pulse'
+                        : 'bg-slate-950/80 hover:bg-purple-950/40 border-slate-800 hover:border-purple-500/50 text-slate-200'
+                    }`}
+                  >
+                    <span className="text-2xl mb-1">{em.emoji}</span>
+                    <span className="text-[11px] font-bold text-slate-300">{em.name}</span>
+                    <span className="text-[9px] font-mono text-purple-400 mt-0.5">Key [{em.hotkey}]</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={onToggleEmotePicker}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-colors cursor-pointer"
+              >
+                Close Menu (Press E)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* On-Screen D-Pad & Sprint Button */}
       <div className="absolute bottom-20 right-6 z-20 flex flex-col items-center gap-2 bg-slate-900/80 p-3 rounded-2xl border border-slate-800 backdrop-blur-md shadow-2xl">
