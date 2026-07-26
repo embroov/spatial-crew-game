@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import type { Player, Position, ChatMessage, EmoteNotification } from '../types/game';
 import type { SpatialAudioEngine } from '../engine/SpatialAudioEngine';
+import type { DJMusicState } from '../engine/DJMusicEngine';
 
 export interface PublicRoomInfo {
   id: string;
@@ -16,6 +17,7 @@ export type NetworkEventHandler = {
   onChatMessage?: (msg: ChatMessage) => void;
   onEmoteReceived?: (emote: EmoteNotification) => void;
   onPublicRoomsUpdate?: (rooms: PublicRoomInfo[]) => void;
+  onDjStateUpdate?: (djState: DJMusicState) => void;
 };
 
 export class SocketService {
@@ -80,6 +82,12 @@ export class SocketService {
     this.socket.on('public_rooms_update', (roomsList: PublicRoomInfo[]) => {
       if (this.handlers.onPublicRoomsUpdate) {
         this.handlers.onPublicRoomsUpdate(roomsList);
+      }
+    });
+
+    this.socket.on('dj_state_update', (djState: DJMusicState) => {
+      if (this.handlers.onDjStateUpdate) {
+        this.handlers.onDjStateUpdate(djState);
       }
     });
 
@@ -356,6 +364,12 @@ export class SocketService {
       }
     });
     return Array.from(this.playersMap.values());
+  }
+
+  public updateDjState(djState: DJMusicState) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('update_dj_state', djState);
+    }
   }
 
   public disconnect() {

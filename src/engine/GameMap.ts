@@ -122,12 +122,15 @@ export class GameMap {
 
     // --- DJ Stage & Dance Floor (3500, 1300, 1300, 1000) ---
     { x: 3500, y: 1300, width: 1300, height: 30 },
+    { x: 3500, y: 1300, width: 1300, height: 180, invisible: true },
     { x: 4770, y: 1300, width: 30, height: 1000 },
     { x: 3500, y: 2270, width: 1300, height: 30 },
     { x: 3500, y: 1300, width: 30, height: 350 },
     { x: 3500, y: 1950, width: 30, height: 350 }, // OPEN DOORWAY at Y: 1650..1950
-    // Invisible Solid Stage Obstacle Boundary (upper side of DJ room)
-    { x: 3750, y: 1330, width: 800, height: 460, invisible: true },
+    // Invisible Solid Stage Obstacle Boundaries (shaped to tightly fit DJ stage and stairs)
+    { x: 3840, y: 1610, width: 60, height: 145, invisible: true }, // Left stairs boundary
+    { x: 3910, y: 1330, width: 475, height: 390, invisible: true }, // DJ booth / stage platform
+    { x: 4390, y: 1610, width: 60, height: 145, invisible: true }, // Right stairs boundary
 
     // --- Sunset Terrace Café (300, 2500, 1300, 800) ---
     { x: 300, y: 2500, width: 500, height: 30 },
@@ -159,7 +162,7 @@ export class GameMap {
    */
   public static checkCollision(x: number, y: number, radius: number = 18): boolean {
     if (x - radius < 60 || x + radius > this.MAP_WIDTH - 60 ||
-        y - radius < 60 || y + radius > this.MAP_HEIGHT - 60) {
+      y - radius < 60 || y + radius > this.MAP_HEIGHT - 60) {
       return true;
     }
 
@@ -183,7 +186,7 @@ export class GameMap {
   public static getCurrentRoom(x: number, y: number): string {
     for (const room of this.ROOMS) {
       if (x >= room.x && x <= room.x + room.width &&
-          y >= room.y && y <= room.y + room.height) {
+        y >= room.y && y <= room.y + room.height) {
         return room.name;
       }
     }

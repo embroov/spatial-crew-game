@@ -3,11 +3,13 @@ import type { Player, ChatMessage, EmoteNotification, Position } from './types/g
 import { GameMap } from './engine/GameMap';
 import { SpatialAudioEngine } from './engine/SpatialAudioEngine';
 import { SocketService, type PublicRoomInfo } from './services/SocketService';
+import { DJMusicEngine, DJMusicState, PRESET_TRACKS } from './engine/DJMusicEngine';
 import { ServerLobby } from './components/Lobby/ServerLobby';
 import { GameCanvas } from './components/Game/GameCanvas';
 import { AudioControlsBar } from './components/UI/AudioControlsBar';
 import { Minimap } from './components/UI/Minimap';
 import { ChatAndPlayers } from './components/UI/ChatAndPlayers';
+import { DJControlPanel } from './components/UI/DJControlPanel';
 
 export function App() {
   const [inGame, setInGame] = useState(false);
@@ -17,11 +19,21 @@ export function App() {
   // Public server rooms list with live player counts
   const [publicRooms, setPublicRooms] = useState<PublicRoomInfo[]>([]);
 
-  // UI state for hotkeys
+  // UI state for hotkeys & modals
   const [chatOpen, setChatOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [emoteOpen, setEmoteOpen] = useState(false);
+  const [djConsoleOpen, setDjConsoleOpen] = useState(false);
   const [hideCursor, setHideCursor] = useState(false);
+
+  // DJ State
+  const [djState, setDjState] = useState<DJMusicState>({
+    isPlaying: false,
+    trackId: PRESET_TRACKS[0]?.id || 'default_track',
+    trackName: PRESET_TRACKS[0]?.name || 'Select a Track',
+    djName: 'Automated DJ',
+    startedAt: Date.now(),
+  });
 
   const [localPlayer, setLocalPlayer] = useState<Player>({
     id: Math.random().toString(36).substring(2, 9),
@@ -40,6 +52,7 @@ export function App() {
 
   // Engine & Service singletons
   const audioEngineRef = useRef<SpatialAudioEngine>(new SpatialAudioEngine());
+  const djEngineRef = useRef<DJMusicEngine>(new DJMusicEngine());
   const socketServiceRef = useRef<SocketService>(new SocketService());
 
   const handleToggleMute = () => {
@@ -109,7 +122,7 @@ export function App() {
       } else if (key === 'u') {
         e.preventDefault();
         handleToggleMute();
-      } else if (key === 'e') {
+      } else if (key === 'y') {
         e.preventDefault();
         setEmoteOpen((prev) => !prev);
       }
@@ -161,10 +174,38 @@ export function App() {
           prev.map((p) => (p.id === emote.playerId ? { ...p, activeEmote: emote.emoji ? { emoji: emote.emoji, expiresAt } : undefined } : p))
         );
       },
+      onDjStateUpdate: (incomingDjState: DJMusicState) => {
+        setDjState(incomingDjState);
+        if (incomingDjState.isPlaying) {
+          djEngineRef.current.playTrack(
+            incomingDjState.trackId,
+            incomingDjState.customUrl,
+            incomingDjState.djName,
+            incomingDjState.startedAt
+          );
+        } else {
+          djEngineRef.current.pauseTrack();
+        }
+      },
     });
 
     socketServiceRef.current.joinRoom(newLocalPlayer, code);
     setInGame(true);
+  };
+
+  const handleUpdateDjState = (newState: DJMusicState) => {
+    setDjState(newState);
+    if (newState.isPlaying) {
+      djEngineRef.current.playTrack(
+        newState.trackId,
+        newState.customUrl,
+        newState.djName,
+        newState.startedAt
+      );
+    } else {
+      djEngineRef.current.pauseTrack();
+    }
+    socketServiceRef.current.updateDjState(newState);
   };
 
   const handlePositionUpdate = (pos: Position, angle: number) => {
@@ -210,6 +251,7 @@ export function App() {
   };
 
   const handleLeaveServer = () => {
+    djEngineRef.current.stopPlayback();
     socketServiceRef.current.disconnect();
     setInGame(false);
   };
@@ -229,6 +271,9 @@ export function App() {
             localPlayer={localPlayer}
             players={players}
             audioEngine={audioEngineRef.current}
+            djEngine={djEngineRef.current}
+            djState={djState}
+            onOpenDjConsole={() => setDjConsoleOpen(true)}
             onPositionUpdate={handlePositionUpdate}
             showAudioRadius={showAudioRadius}
             hideCursor={hideCursor}
@@ -237,6 +282,17 @@ export function App() {
             showEmotePicker={emoteOpen}
             onToggleEmotePicker={() => setEmoteOpen((prev) => !prev)}
           />
+
+          {/* DJ Control Console Modal */}
+          {djConsoleOpen && (
+            <DJControlPanel
+              djEngine={djEngineRef.current}
+              djState={djState}
+              localPlayerName={localPlayer.name}
+              onUpdateState={handleUpdateDjState}
+              onClose={() => setDjConsoleOpen(false)}
+            />
+          )}
 
           {/* Minimap View */}
           <Minimap

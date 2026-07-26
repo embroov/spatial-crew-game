@@ -196,6 +196,13 @@ export class SpatialAudioEngine {
     return this.config;
   }
 
+  public getAudioContext(): AudioContext | null {
+    if (this.audioCtx && this.audioCtx.state === 'closed') {
+      this.audioCtx = null;
+    }
+    return this.audioCtx;
+  }
+
   public dispose() {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
@@ -204,8 +211,13 @@ export class SpatialAudioEngine {
     if (this.localStream) {
       this.localStream.getTracks().forEach((track) => track.stop());
     }
-    if (this.audioCtx) {
-      this.audioCtx.close();
+    if (this.audioCtx && this.audioCtx.state !== 'closed') {
+      try {
+        this.audioCtx.close();
+      } catch (e) {
+        console.warn('Error closing audioCtx:', e);
+      }
+      this.audioCtx = null;
     }
   }
 }

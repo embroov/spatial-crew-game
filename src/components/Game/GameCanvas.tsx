@@ -2,12 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Player, Position } from '../../types/game';
 import { GameMap } from '../../engine/GameMap';
 import type { SpatialAudioEngine } from '../../engine/SpatialAudioEngine';
+import type { DJMusicEngine, DJMusicState } from '../../engine/DJMusicEngine';
 import { Smile, X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 interface GameCanvasProps {
   localPlayer: Player;
   players: Player[];
   audioEngine: SpatialAudioEngine;
+  djEngine: DJMusicEngine;
+  djState: DJMusicState;
+  onOpenDjConsole: () => void;
   onPositionUpdate: (pos: Position, angle: number) => void;
   showAudioRadius: boolean;
   hideCursor: boolean;
@@ -33,6 +37,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   localPlayer,
   players,
   audioEngine,
+  djEngine,
+  djState,
+  onOpenDjConsole,
   onPositionUpdate,
   showAudioRadius,
   hideCursor,
@@ -184,6 +191,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         handleResetZoom();
       }
 
+      // Press E to interact with DJ Booth if near stage
+      if (key === 'e' || code === 'KeyE') {
+        const distToDj = Math.hypot(posRef.current.x - 4150, posRef.current.y - 1650);
+        if (distToDj < 300 && onOpenDjConsole) {
+          onOpenDjConsole();
+        }
+      }
+
       // Number keys 1-9 for instant emote
       if (/^[1-9]$/.test(key)) {
         const index = parseInt(key, 10) - 1;
@@ -269,6 +284,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       });
 
+      djEngine.updateSpatialVolume(posRef.current.x, posRef.current.y);
+
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -318,6 +335,137 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.drawImage(djStageImgRef.current, room.x, room.y, room.width, room.height);
               }
 
+              // High-End Custom Procedural Cyberpunk Illuminated Dance Floor
+              const dfX = room.x + 220; // 3720
+              const dfY = room.y + 350; // 1650
+              const dfW = 860;
+              const dfH = 580;
+              const cols = 8;
+              const rows = 6;
+              const tileW = dfW / cols;
+              const tileH = dfH / rows;
+              const time = now / 1000;
+
+              // Read live audio frequency data for beat-synced light waves
+              const freqData = new Uint8Array(16);
+              if (djState.isPlaying) {
+                djEngine.getFrequencyData(freqData);
+              }
+
+              // 1. Dance Floor Base Stage Platform
+              ctx.fillStyle = 'rgba(10, 15, 26, 0.95)';
+              ctx.fillRect(dfX - 10, dfY - 10, dfW + 20, dfH + 20);
+
+              // 2. Beveled Metallic Floor Border
+              ctx.strokeStyle = '#334155';
+              ctx.lineWidth = 4;
+              ctx.strokeRect(dfX - 10, dfY - 10, dfW + 20, dfH + 20);
+
+              ctx.strokeStyle = djState.isPlaying ? 'rgba(6, 182, 212, 0.8)' : 'rgba(71, 85, 105, 0.5)';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(dfX - 6, dfY - 6, dfW + 12, dfH + 12);
+
+              // 3. Render 8x6 Illuminated Glass Tile Grid
+              for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                  const tX = dfX + c * tileW;
+                  const tY = dfY + r * tileH;
+                  const tCenterX = tX + tileW / 2;
+                  const tCenterY = tY + tileH / 2;
+
+                  // Check if local or remote player is standing on this tile
+                  let playerOnTile = false;
+                  const px = posRef.current.x;
+                  const py = posRef.current.y;
+                  if (px >= tX && px <= tX + tileW && py >= tY && py <= tY + tileH) {
+                    playerOnTile = true;
+                  } else {
+                    for (const player of players) {
+                      if (player.id !== localPlayer.id && player.position) {
+                        if (player.position.x >= tX && player.position.x <= tX + tileW &&
+                            player.position.y >= tY && player.position.y <= tY + tileH) {
+                          playerOnTile = true;
+                          break;
+                        }
+                      }
+                    }
+                  }
+
+                  // Compute dynamic color & brightness
+                  let hue = 200;
+                  let saturation = 85;
+                  let lightness = 45;
+                  let alpha = 0.35;
+
+                  if (djState.isPlaying) {
+                    const freqIdx = (c + r * 2) % 16;
+                    const audioIntensity = (freqData[freqIdx] || Math.abs(Math.sin(time * 6 + c + r) * 160)) / 255;
+
+                    hue = (c * 35 + r * 25 + time * 140) % 360;
+                    saturation = 90;
+                    lightness = 45 + audioIntensity * 30;
+                    alpha = 0.5 + audioIntensity * 0.45;
+                  } else {
+                    hue = (c * 20 + r * 15 + time * 25) % 360;
+                    saturation = 70;
+                    lightness = 30 + Math.sin(time * 2 + c * 0.4 + r * 0.3) * 10;
+                    alpha = 0.25 + Math.sin(time * 2 + c * 0.5 + r * 0.3) * 0.12;
+                  }
+
+                  if (playerOnTile) {
+                    hue = 320; // Magenta / Neon Pink highlight on step
+                    lightness = 75;
+                    alpha = 0.95;
+                  }
+
+                  // Tile Outer Framing
+                  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                  ctx.fillRect(tX + 2, tY + 2, tileW - 4, tileH - 4);
+
+                  // Glowing Center Core Radial Bulb
+                  const radius = Math.min(tileW, tileH) * 0.45;
+                  const grad = ctx.createRadialGradient(tCenterX, tCenterY, 3, tCenterX, tCenterY, radius);
+                  grad.addColorStop(0, `hsla(${hue}, ${saturation}%, ${lightness + 20}%, ${alpha})`);
+                  grad.addColorStop(0.5, `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha * 0.75})`);
+                  grad.addColorStop(1, `hsla(${hue}, ${saturation}%, ${Math.max(15, lightness - 20)}%, 0.1)`);
+
+                  ctx.fillStyle = grad;
+                  ctx.fillRect(tX + 4, tY + 4, tileW - 8, tileH - 8);
+
+                  // Neon Inner Bevel Border
+                  ctx.strokeStyle = `hsla(${hue}, ${saturation}%, ${lightness + 10}%, ${alpha * 0.8})`;
+                  ctx.lineWidth = playerOnTile ? 2.5 : 1;
+                  ctx.strokeRect(tX + 3, tY + 3, tileW - 6, tileH - 6);
+
+                  // Interactive Player Step Footprint Aura Ring
+                  if (playerOnTile) {
+                    ctx.beginPath();
+                    ctx.arc(tCenterX, tCenterY, Math.min(tileW, tileH) * 0.35, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                  }
+                }
+              }
+
+              // 4. Illuminated Corner Spotlights
+              const corners = [
+                { x: dfX - 10, y: dfY - 10 },
+                { x: dfX + dfW + 10, y: dfY - 10 },
+                { x: dfX - 10, y: dfY + dfH + 10 },
+                { x: dfX + dfW + 10, y: dfY + dfH + 10 },
+              ];
+              corners.forEach((spot, idx) => {
+                const spotHue = (idx * 90 + time * 80) % 360;
+                ctx.beginPath();
+                ctx.arc(spot.x, spot.y, 10, 0, Math.PI * 2);
+                ctx.fillStyle = djState.isPlaying ? `hsl(${spotHue}, 90%, 60%)` : '#38bdf8';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+              });
+
               // Render Elevated DJ Stage Overlay Graphic in Upper Side
               if (djStageOverlayImgRef.current) {
                 const stgX = room.x + 250; // 3750
@@ -327,6 +475,74 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
                 // Stage Graphic
                 ctx.drawImage(djStageOverlayImgRef.current, stgX, stgY, stgW, stgH);
+
+                // Live DJ Visualizer Effects & Stage Lights
+                if (djState.isPlaying) {
+                  const time = now / 1000;
+                  // Equalizer Screen on Stage Backdrop
+                  const eqX = stgX + 280;
+                  const eqY = stgY + 85;
+                  const eqW = 240;
+                  const eqH = 75;
+
+                  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                  ctx.fillRect(eqX, eqY, eqW, eqH);
+                  ctx.strokeStyle = '#06b6d4';
+                  ctx.lineWidth = 1.5;
+                  ctx.strokeRect(eqX, eqY, eqW, eqH);
+
+                  const rawEq = new Uint8Array(16);
+                  djEngine.getFrequencyData(rawEq);
+                  const barW = eqW / 16;
+                  for (let i = 0; i < 16; i++) {
+                    const val = (rawEq[i] || Math.abs(Math.sin(time * 8 + i * 0.5) * 180)) / 255;
+                    const bH = Math.max(4, val * (eqH - 10));
+                    const hue = (i * 20 + time * 60) % 360;
+                    ctx.fillStyle = `hsla(${hue}, 90%, 60%, 0.95)`;
+                    ctx.fillRect(eqX + i * barW + 2, eqY + eqH - bH - 2, barW - 4, bH);
+                  }
+
+                  // Sweeping Neon Laser Beams
+                  const laserSourceX = stgX + 400;
+                  const laserSourceY = stgY + 60;
+                  const laserColors = ['rgba(6, 182, 212, 0.7)', 'rgba(236, 72, 153, 0.7)', 'rgba(52, 211, 153, 0.7)'];
+                  for (let i = 0; i < 5; i++) {
+                    const angle = (Math.sin(time * 2.5 + i * 1.1) * 0.45) + (Math.PI / 2);
+                    const len = 420;
+                    const targetX = laserSourceX + Math.cos(angle) * len;
+                    const targetY = laserSourceY + Math.sin(angle) * len;
+
+                    ctx.beginPath();
+                    ctx.moveTo(laserSourceX, laserSourceY);
+                    ctx.lineTo(targetX, targetY);
+                    ctx.strokeStyle = laserColors[i % laserColors.length];
+                    ctx.lineWidth = 2.5 + Math.sin(time * 8 + i) * 1.5;
+                    ctx.stroke();
+                  }
+
+                  // Stage Live Banner
+                  ctx.fillStyle = 'rgba(6, 182, 212, 0.95)';
+                  ctx.font = 'bold 12px sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.fillText(`🎧 DJ ${djState.djName.toUpperCase()} — LIVE: ${djState.trackName.toUpperCase()}`, stgX + 400, stgY + 65);
+                }
+
+                // Render DJ Booth Interactive Trigger Badge when player is near
+                const distToDj = Math.hypot(posRef.current.x - 4150, posRef.current.y - 1650);
+                if (distToDj < 280) {
+                  const promptX = 4150;
+                  const promptY = 1710;
+                  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+                  ctx.fillRect(promptX - 150, promptY - 20, 300, 40);
+                  ctx.strokeStyle = '#06b6d4';
+                  ctx.lineWidth = 2;
+                  ctx.strokeRect(promptX - 150, promptY - 20, 300, 40);
+
+                  ctx.fillStyle = '#67e8f9';
+                  ctx.font = 'bold 13px sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.fillText('🎧 PRESS [E] OR CLICK TO PLAY DJ MUSIC', promptX, promptY + 5);
+                }
               }
             } else {
               // Glowing Room Border Outline
@@ -547,7 +763,25 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         hideCursor ? 'cursor-none' : ''
       }`}
     >
-      <canvas ref={canvasRef} className={`block w-full h-full ${hideCursor ? 'cursor-none' : 'cursor-crosshair'}`} />
+      <canvas
+        ref={canvasRef}
+        onClick={(e) => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          const clickY = e.clientY - rect.top;
+
+          const worldX = (clickX - canvas.width / 2) / zoomScale + posRef.current.x;
+          const worldY = (clickY - canvas.height / 2) / zoomScale + posRef.current.y;
+
+          const distToDj = Math.hypot(worldX - 4150, worldY - 1650);
+          if (distToDj < 300 && onOpenDjConsole) {
+            onOpenDjConsole();
+          }
+        }}
+        className={`block w-full h-full ${hideCursor ? 'cursor-none' : 'cursor-crosshair'}`}
+      />
 
       {/* Controls Overlay */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-none font-sans">
@@ -570,7 +804,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-blue-400 border border-slate-700">/</kbd> Chat</span>
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-blue-400 border border-slate-700">M</kbd> Map</span>
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-blue-400 border border-slate-700">U</kbd> Mic</span>
-          <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-purple-400 border border-slate-700">E</kbd> Emotes</span>
+          <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-purple-400 border border-slate-700">Y</kbd> Emotes</span>
           <span><kbd className="px-1 bg-slate-800 rounded font-mono font-bold text-amber-400 border border-slate-700">Wheel</kbd> Zoom</span>
         </div>
 
@@ -621,12 +855,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ? 'bg-purple-600 border-purple-400 text-white shadow-lg ring-2 ring-purple-500/50' 
               : 'bg-slate-800 hover:bg-slate-700 text-purple-300 border-slate-700'
           }`}
-          title="Press 'E' to open Emote Menu"
+          title="Press 'Y' to open Emote Menu"
         >
           <Smile className="w-4 h-4 text-purple-300 animate-bounce" />
           <span>EMOTES MENU</span>
           <kbd className="px-1.5 py-0.5 bg-slate-950 border border-purple-500/60 rounded text-[10px] font-mono text-purple-300 font-bold">
-            E
+            Y
           </kbd>
         </button>
       </div>
