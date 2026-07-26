@@ -30,35 +30,41 @@ export let PRESET_TRACKS: DJTrack[] = [DEFAULT_TRACK];
 
 export async function fetchAvailableTracks(): Promise<DJTrack[]> {
   const localTracks: DJTrack[] = [];
-  const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
+  // 1. Scan src/assets/music/ using Vite glob with ?url (Works statically on Vercel)
   try {
-    const res = await fetch(`${serverUrl}/api/music-tracks`);
-    if (res.ok) {
-      const files: string[] = await res.json();
-      files.forEach((filename) => {
+    const globModules = import.meta.glob('/src/assets/music/*.{mp3,wav,ogg,m4a,flac}', {
+      eager: true,
+      query: '?url',
+      import: 'default',
+    });
+
+    Object.entries(globModules).forEach(([pathKey, audioUrl]) => {
+      const filename = pathKey.split('/').pop() || '';
+      if (filename && filename !== 'README.txt') {
         const cleanName = filename.replace(/\.(mp3|wav|ogg|m4a|flac)$/i, '');
         localTracks.push({
-          id: `local_${filename}`,
+          id: `asset_${filename}`,
           name: `🎵 ${cleanName}`,
           genre: 'Song',
           bpm: 120,
           isProcedural: false,
-          url: `/music/${filename}`,
+          url: audioUrl as string,
         });
-      });
-    }
+      }
+    });
   } catch (e) {
-    console.warn('API fetch for music-tracks failed:', e);
+    console.warn('Vite glob scan for src/assets/music failed:', e);
   }
 
-  // Vite glob fallback
+  // 2. Fetch from backend server API if available
   if (localTracks.length === 0) {
     try {
-      const globFiles = import.meta.glob('/public/music/*.{mp3,wav,ogg,m4a,flac}', { eager: true });
-      Object.keys(globFiles).forEach((pathKey) => {
-        const filename = pathKey.split('/').pop() || '';
-        if (filename && filename !== 'README.txt') {
+      const serverUrl = import.meta.env.VITE_SERVER_URL || '';
+      const res = await fetch(`${serverUrl}/api/music-tracks`);
+      if (res.ok) {
+        const files: string[] = await res.json();
+        files.forEach((filename) => {
           const cleanName = filename.replace(/\.(mp3|wav|ogg|m4a|flac)$/i, '');
           localTracks.push({
             id: `local_${filename}`,
@@ -68,10 +74,10 @@ export async function fetchAvailableTracks(): Promise<DJTrack[]> {
             isProcedural: false,
             url: `/music/${filename}`,
           });
-        }
-      });
+        });
+      }
     } catch (e) {
-      console.warn('Vite glob scan fallback failed:', e);
+      console.warn('API fetch for music-tracks failed:', e);
     }
   }
 
