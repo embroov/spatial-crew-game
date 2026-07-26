@@ -335,73 +335,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.drawImage(djStageImgRef.current, room.x, room.y, room.width, room.height);
               }
 
-              // Render Elevated DJ Stage Overlay Graphic in Upper Side
-              if (djStageOverlayImgRef.current) {
-                const stgX = room.x + 250; // 3750
-                const stgY = room.y + 30;  // 1330
-                const stgW = 800;
-                const stgH = 480;
-
-                // Stage Graphic
-                ctx.drawImage(djStageOverlayImgRef.current, stgX, stgY, stgW, stgH);
-
-                // Live DJ Visualizer Effects & Stage Lights
-                if (djState.isPlaying) {
-                  const time = now / 1000;
-                  // Equalizer Screen on Stage Backdrop
-                  const eqX = stgX + 280;
-                  const eqY = stgY + 85;
-                  const eqW = 240;
-                  const eqH = 75;
-
-                  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-                  ctx.fillRect(eqX, eqY, eqW, eqH);
-                  ctx.strokeStyle = '#06b6d4';
-                  ctx.lineWidth = 1.5;
-                  ctx.strokeRect(eqX, eqY, eqW, eqH);
-
-                  const rawEq = new Uint8Array(16);
-                  djEngine.getFrequencyData(rawEq);
-                  const barW = eqW / 16;
-                  for (let i = 0; i < 16; i++) {
-                    const val = (rawEq[i] || Math.abs(Math.sin(time * 8 + i * 0.5) * 180)) / 255;
-                    const bH = Math.max(4, val * (eqH - 10));
-                    const hue = (i * 20 + time * 60) % 360;
-                    ctx.fillStyle = `hsla(${hue}, 90%, 60%, 0.95)`;
-                    ctx.fillRect(eqX + i * barW + 2, eqY + eqH - bH - 2, barW - 4, bH);
-                  }
-
-                  // Sweeping Neon Laser Beams
-                  const laserSourceX = stgX + 400;
-                  const laserSourceY = stgY + 60;
-                  const laserColors = ['rgba(6, 182, 212, 0.7)', 'rgba(236, 72, 153, 0.7)', 'rgba(52, 211, 153, 0.7)'];
-                  for (let i = 0; i < 5; i++) {
-                    const angle = (Math.sin(time * 2.5 + i * 1.1) * 0.45) + (Math.PI / 2);
-                    const len = 420;
-                    const targetX = laserSourceX + Math.cos(angle) * len;
-                    const targetY = laserSourceY + Math.sin(angle) * len;
-
-                    ctx.beginPath();
-                    ctx.moveTo(laserSourceX, laserSourceY);
-                    ctx.lineTo(targetX, targetY);
-                    ctx.strokeStyle = laserColors[i % laserColors.length];
-                    ctx.lineWidth = 2.5 + Math.sin(time * 8 + i) * 1.5;
-                    ctx.stroke();
-                  }
-
-                  // Stage Live Banner
-                  ctx.fillStyle = 'rgba(6, 182, 212, 0.95)';
-                  ctx.font = 'bold 12px sans-serif';
-                  ctx.textAlign = 'center';
-                  ctx.fillText(`🎧 DJ ${djState.djName.toUpperCase()} — LIVE: ${djState.trackName.toUpperCase()}`, stgX + 400, stgY + 65);
-                }
-              }
-
-              // High-End Custom Procedural Cyberpunk Illuminated Dance Floor
-              const dfX = room.x + 220; // 3720
-              const dfY = room.y + 350; // 1650
-              const dfW = 860;
-              const dfH = 580;
+              // 1. High-End Custom Procedural Cyberpunk Illuminated Dance Floor (Slightly Smaller & Placed Under Stage)
+              const dfX = room.x + 290; // 3790
+              const dfY = room.y + 450; // 1750
+              const dfW = 720;
+              const dfH = 460;
               const cols = 8;
               const rows = 6;
               const tileW = dfW / cols;
@@ -414,20 +352,20 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 djEngine.getFrequencyData(freqData);
               }
 
-              // 1. Dance Floor Base Stage Platform
+              // Dance Floor Base Stage Platform
               ctx.fillStyle = 'rgba(10, 15, 26, 0.95)';
-              ctx.fillRect(dfX - 10, dfY - 10, dfW + 20, dfH + 20);
+              ctx.fillRect(dfX - 8, dfY - 8, dfW + 16, dfH + 16);
 
-              // 2. Beveled Metallic Floor Border
+              // Beveled Metallic Floor Border
               ctx.strokeStyle = '#334155';
               ctx.lineWidth = 4;
-              ctx.strokeRect(dfX - 10, dfY - 10, dfW + 20, dfH + 20);
+              ctx.strokeRect(dfX - 8, dfY - 8, dfW + 16, dfH + 16);
 
               ctx.strokeStyle = djState.isPlaying ? 'rgba(6, 182, 212, 0.8)' : 'rgba(71, 85, 105, 0.5)';
               ctx.lineWidth = 2;
-              ctx.strokeRect(dfX - 6, dfY - 6, dfW + 12, dfH + 12);
+              ctx.strokeRect(dfX - 5, dfY - 5, dfW + 10, dfH + 10);
 
-              // 3. Render 8x6 Illuminated Glass Tile Grid
+              // Render 8x6 Illuminated Glass Tile Grid
               for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                   const tX = dfX + c * tileW;
@@ -510,22 +448,85 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 }
               }
 
-              // 4. Illuminated Corner Spotlights
+              // Illuminated Corner Spotlights
               const corners = [
-                { x: dfX - 10, y: dfY - 10 },
-                { x: dfX + dfW + 10, y: dfY - 10 },
-                { x: dfX - 10, y: dfY + dfH + 10 },
-                { x: dfX + dfW + 10, y: dfY + dfH + 10 },
+                { x: dfX - 8, y: dfY - 8 },
+                { x: dfX + dfW + 8, y: dfY - 8 },
+                { x: dfX - 8, y: dfY + dfH + 8 },
+                { x: dfX + dfW + 8, y: dfY + dfH + 8 },
               ];
               corners.forEach((spot, idx) => {
                 const spotHue = (idx * 90 + time * 80) % 360;
                 ctx.beginPath();
-                ctx.arc(spot.x, spot.y, 10, 0, Math.PI * 2);
+                ctx.arc(spot.x, spot.y, 8, 0, Math.PI * 2);
                 ctx.fillStyle = djState.isPlaying ? `hsl(${spotHue}, 90%, 60%)` : '#38bdf8';
                 ctx.fill();
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 1.5;
+                ctx.stroke();
               });
+
+              // 2. Render Elevated DJ Stage Overlay Graphic ON TOP of Dance Floor (No Overlap)
+              if (djStageOverlayImgRef.current) {
+                const stgX = room.x + 250; // 3750
+                const stgY = room.y + 30;  // 1330
+                const stgW = 800;
+                const stgH = 480;
+
+                // Stage Graphic
+                ctx.drawImage(djStageOverlayImgRef.current, stgX, stgY, stgW, stgH);
+
+                // Live DJ Visualizer Effects & Stage Lights
+                if (djState.isPlaying) {
+                  const time = now / 1000;
+                  // Equalizer Screen on Stage Backdrop
+                  const eqX = stgX + 280;
+                  const eqY = stgY + 85;
+                  const eqW = 240;
+                  const eqH = 75;
+
+                  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                  ctx.fillRect(eqX, eqY, eqW, eqH);
+                  ctx.strokeStyle = '#06b6d4';
+                  ctx.lineWidth = 1.5;
+                  ctx.strokeRect(eqX, eqY, eqW, eqH);
+
+                  const rawEq = new Uint8Array(16);
+                  djEngine.getFrequencyData(rawEq);
+                  const barW = eqW / 16;
+                  for (let i = 0; i < 16; i++) {
+                    const val = (rawEq[i] || Math.abs(Math.sin(time * 8 + i * 0.5) * 180)) / 255;
+                    const bH = Math.max(4, val * (eqH - 10));
+                    const hue = (i * 20 + time * 60) % 360;
+                    ctx.fillStyle = `hsla(${hue}, 90%, 60%, 0.95)`;
+                    ctx.fillRect(eqX + i * barW + 2, eqY + eqH - bH - 2, barW - 4, bH);
+                  }
+
+                  // Sweeping Neon Laser Beams
+                  const laserSourceX = stgX + 400;
+                  const laserSourceY = stgY + 60;
+                  const laserColors = ['rgba(6, 182, 212, 0.7)', 'rgba(236, 72, 153, 0.7)', 'rgba(52, 211, 153, 0.7)'];
+                  for (let i = 0; i < 5; i++) {
+                    const angle = (Math.sin(time * 2.5 + i * 1.1) * 0.45) + (Math.PI / 2);
+                    const len = 420;
+                    const targetX = laserSourceX + Math.cos(angle) * len;
+                    const targetY = laserSourceY + Math.sin(angle) * len;
+
+                    ctx.beginPath();
+                    ctx.moveTo(laserSourceX, laserSourceY);
+                    ctx.lineTo(targetX, targetY);
+                    ctx.strokeStyle = laserColors[i % laserColors.length];
+                    ctx.lineWidth = 2.5 + Math.sin(time * 8 + i) * 1.5;
+                    ctx.stroke();
+                  }
+
+                  // Stage Live Banner
+                  ctx.fillStyle = 'rgba(6, 182, 212, 0.95)';
+                  ctx.font = 'bold 12px sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.fillText(`🎧 DJ ${djState.djName.toUpperCase()} — LIVE: ${djState.trackName.toUpperCase()}`, stgX + 400, stgY + 65);
+                }
+              }
 
                 // Render DJ Booth Interactive Trigger Badge when player is near
                 const distToDj = Math.hypot(posRef.current.x - 4150, posRef.current.y - 1650);
