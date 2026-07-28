@@ -263,7 +263,7 @@ export class DJMusicEngine {
 
   public getFrequencyData(array: Uint8Array): void {
     if (this.analyser && this.isPlaying) {
-      this.analyser.getByteFrequencyData(array);
+      this.analyser.getByteFrequencyData(array as any);
     } else {
       array.fill(0);
     }
