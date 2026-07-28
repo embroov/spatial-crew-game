@@ -179,7 +179,7 @@ export function App() {
         if (incomingDjState.isPlaying) {
           djEngineRef.current.playTrack(
             incomingDjState.trackId,
-            incomingDjState.customUrl,
+            incomingDjState.customUrl || incomingDjState.trackUrl,
             incomingDjState.djName,
             incomingDjState.startedAt
           );
@@ -198,7 +198,7 @@ export function App() {
     if (newState.isPlaying) {
       djEngineRef.current.playTrack(
         newState.trackId,
-        newState.customUrl,
+        newState.customUrl || newState.trackUrl,
         newState.djName,
         newState.startedAt
       );

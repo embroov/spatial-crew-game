@@ -1,9 +1,9 @@
 export interface DJTrack {
   id: string;
   name: string;
-  genre: string;
-  bpm: number;
-  isProcedural: boolean;
+  genre?: string;
+  bpm?: number;
+  isProcedural?: boolean;
   url?: string;
 }
 
@@ -12,77 +12,69 @@ export interface DJMusicState {
   trackId: string;
   trackName: string;
   trackUrl?: string;
+  customUrl?: string;
   djName: string;
   startedAt: number; // timestamp
 }
 
-export const DEFAULT_TRACK: DJTrack = {
-  id: 'default_track',
-  name: 'Select a Track',
-  genre: 'Music',
-  bpm: 120,
-  isProcedural: false,
-};
+/**
+ * Utility to convert Google Drive / Dropbox share links to direct audio streaming URLs.
+ * Example Google Drive links:
+ * - https://drive.google.com/file/d/1234567890abcdef/view?usp=sharing
+ * - https://drive.google.com/open?id=1234567890abcdef
+ * Converts to:
+ * - https://docs.google.com/uc?export=download&id=1234567890abcdef
+ */
+export function formatAudioUrl(url: string): string {
+  if (!url) return '';
+  const cleanUrl = url.trim();
+
+  // If already proxied
+  if (cleanUrl.startsWith('/api/proxy-audio')) {
+    return cleanUrl;
+  }
+
+  // Check for Google Drive URL or File ID
+  if (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com') || cleanUrl.includes('drive.usercontent.google.com')) {
+    return `/api/proxy-audio?url=${encodeURIComponent(cleanUrl)}`;
+  }
+
+  // Match Dropbox share links: ?dl=0 -> ?raw=1
+  if (cleanUrl.includes('dropbox.com') && cleanUrl.endsWith('?dl=0')) {
+    return cleanUrl.replace('?dl=0', '?raw=1');
+  }
+
+  return cleanUrl;
+}
+
+/**
+ * CONFIGURABLE SONG LIST WITH LINKS
+ * Edit song names and paste your Google Drive (or direct MP3) links here.
+ */
+export const SONG_LIST: DJTrack[] = [
+  {
+    id: 'song_1',
+    name: '🎵 Ghagra',
+    isProcedural: false,
+    url: 'https://drive.google.com/file/d/12ft_sf8FRTu1UAnE45DTXTgEXI9sS_JO/view?usp=sharing',
+  },
+  {
+    id: 'song_2',
+    name: '🎵 Teri Baaton Mein Aisa Uljha Jiya',
+    isProcedural: false,
+    url: 'https://drive.google.com/file/d/10Ygu2I6KCOZDAlP6hGWGCgjeAG9cEcLw/view?usp=drive_link',
+  },
+];
+
+export const DEFAULT_TRACK: DJTrack = SONG_LIST[0];
 
 export const PROCEDURAL_TRACKS: DJTrack[] = [];
 
-export let PRESET_TRACKS: DJTrack[] = [DEFAULT_TRACK];
+export let PRESET_TRACKS: DJTrack[] = [...SONG_LIST];
 
 export async function fetchAvailableTracks(): Promise<DJTrack[]> {
-  const localTracks: DJTrack[] = [];
-
-  // 1. Scan src/assets/music/ using Vite glob with ?url (Works statically on Vercel)
-  try {
-    const globModules = import.meta.glob('/src/assets/music/*.{mp3,wav,ogg,m4a,flac}', {
-      eager: true,
-      query: '?url',
-      import: 'default',
-    });
-
-    Object.entries(globModules).forEach(([pathKey, audioUrl]) => {
-      const filename = pathKey.split('/').pop() || '';
-      if (filename && filename !== 'README.txt') {
-        const cleanName = filename.replace(/\.(mp3|wav|ogg|m4a|flac)$/i, '');
-        localTracks.push({
-          id: `asset_${filename}`,
-          name: `🎵 ${cleanName}`,
-          genre: 'Song',
-          bpm: 120,
-          isProcedural: false,
-          url: audioUrl as string,
-        });
-      }
-    });
-  } catch (e) {
-    console.warn('Vite glob scan for src/assets/music failed:', e);
-  }
-
-  // 2. Fetch from backend server API if available
-  if (localTracks.length === 0) {
-    try {
-      const serverUrl = import.meta.env.VITE_SERVER_URL || '';
-      const res = await fetch(`${serverUrl}/api/music-tracks`);
-      if (res.ok) {
-        const files: string[] = await res.json();
-        files.forEach((filename) => {
-          const cleanName = filename.replace(/\.(mp3|wav|ogg|m4a|flac)$/i, '');
-          localTracks.push({
-            id: `local_${filename}`,
-            name: `🎵 ${cleanName}`,
-            genre: 'Song',
-            bpm: 120,
-            isProcedural: false,
-            url: `/music/${filename}`,
-          });
-        });
-      }
-    } catch (e) {
-      console.warn('API fetch for music-tracks failed:', e);
-    }
-  }
-
-  PRESET_TRACKS = localTracks;
-  return localTracks;
+  PRESET_TRACKS = SONG_LIST;
+  return SONG_LIST;
 }
 
 export class DJMusicEngine {
@@ -91,9 +83,10 @@ export class DJMusicEngine {
   private pannerNode: StereoPannerNode | PannerNode | null = null;
   private analyser: AnalyserNode | null = null;
 
-  // Custom audio element for MP3 streams
+  // Custom audio element & buffer source for MP3 streams
   private audioEl: HTMLAudioElement | null = null;
   private audioElSource: MediaElementAudioSourceNode | null = null;
+  private audioBufferSource: AudioBufferSourceNode | null = null;
 
   // Procedural synth timer
   private synthInterval: number | null = null;
@@ -194,6 +187,13 @@ export class DJMusicEngine {
       clearInterval(this.synthInterval);
       this.synthInterval = null;
     }
+    if (this.audioBufferSource) {
+      try {
+        this.audioBufferSource.stop();
+        this.audioBufferSource.disconnect();
+      } catch (e) {}
+      this.audioBufferSource = null;
+    }
     if (this.audioEl) {
       this.audioEl.pause();
       this.audioEl.src = '';
@@ -213,17 +213,15 @@ export class DJMusicEngine {
     const isInDjRoom = inRoomX && inRoomY;
 
     if (isInDjRoom) {
-      // 100% Full Volume anywhere inside the DJ Room (including bottom of the room)
       this.spatialMultiplier = 1.0;
     } else {
-      // Calculate distance outside room boundary for smooth fade-out when stepping outside
       const distOutsideX = playerX < 3480 ? 3480 - playerX : playerX > 4820 ? playerX - 4820 : 0;
       const distOutsideY = playerY < 1280 ? 1280 - playerY : playerY > 2320 ? playerY - 2320 : 0;
       const distOutside = Math.sqrt(distOutsideX * distOutsideX + distOutsideY * distOutsideY);
 
-      const fadeOutBuffer = 100; // Fades out completely within 100px outside room
+      const fadeOutBuffer = 250; // Smoothly fades out and stops within 250px outside room
       if (distOutside >= fadeOutBuffer) {
-        this.spatialMultiplier = 0.0;
+        this.spatialMultiplier = 0.0; // Completely stopped / silent outside room
       } else {
         this.spatialMultiplier = 1.0 - (distOutside / fadeOutBuffer);
       }
@@ -243,9 +241,12 @@ export class DJMusicEngine {
   }
 
   private updateEffectiveVolume() {
+    const finalVol = this.isPlaying ? this.masterVolume * this.spatialMultiplier : 0;
     if (this.masterGain && this.audioCtx) {
-      const finalVol = this.isPlaying ? this.masterVolume * this.spatialMultiplier : 0;
       this.masterGain.gain.setTargetAtTime(finalVol, this.audioCtx.currentTime, 0.05);
+    }
+    if (this.audioEl) {
+      this.audioEl.volume = Math.max(0, Math.min(1, finalVol));
     }
   }
 
@@ -494,13 +495,58 @@ export class DJMusicEngine {
   }
 
   // --- Custom Audio Stream Support ---
-  private startCustomAudioUrl(url: string) {
+  private async startCustomAudioUrl(rawUrl: string) {
     this.stopPlayback();
     this.init();
-    this.ensureContextResumed();
+    await this.ensureContextResumed();
 
-    this.audioEl = new Audio(url);
-    this.audioEl.loop = true;
+    const formattedUrl = formatAudioUrl(rawUrl);
+    if (!formattedUrl) {
+      console.warn('No valid audio URL provided to startCustomAudioUrl');
+      return;
+    }
+
+    console.log('Fetching and playing custom audio from:', formattedUrl);
+
+    // Primary Method: Fetch arrayBuffer & decode with AudioContext
+    try {
+      if (this.audioCtx) {
+        const response = await fetch(formattedUrl);
+        if (response.ok) {
+          const arrayBuf = await response.arrayBuffer();
+          const audioBuffer = await this.audioCtx.decodeAudioData(arrayBuf);
+
+          if (!this.isPlaying) return;
+
+          this.stopPlayback();
+          this.init();
+          await this.ensureContextResumed();
+
+          const source = this.audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.loop = true;
+          if (this.masterGain) {
+            source.connect(this.masterGain);
+          } else {
+            source.connect(this.audioCtx.destination);
+          }
+
+          source.start(0);
+          this.audioBufferSource = source;
+          this.updateEffectiveVolume();
+          console.log('Web Audio BufferSource successfully started!');
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Web Audio decodeAudioData notice, falling back to Audio element:', e);
+    }
+
+    // Secondary Method: HTML5 Audio Element Fallback
+    const audio = new Audio();
+    this.audioEl = audio;
+    audio.loop = true;
+    audio.src = formattedUrl;
 
     if (this.audioCtx && this.masterGain) {
       try {
@@ -508,15 +554,17 @@ export class DJMusicEngine {
           this.audioElSource.disconnect();
           this.audioElSource = null;
         }
-        this.audioElSource = this.audioCtx.createMediaElementSource(this.audioEl);
+        this.audioElSource = this.audioCtx.createMediaElementSource(audio);
         this.audioElSource.connect(this.masterGain);
       } catch (e) {
-        console.warn('MediaElementSource connection notice:', e);
+        console.warn('MediaElementSource notice:', e);
       }
     }
 
-    this.audioEl.play().catch(err => {
-      console.warn('Custom audio playback error:', err);
+    this.updateEffectiveVolume();
+
+    audio.play().catch(err => {
+      console.warn('HTML5 Audio play error:', err);
     });
   }
 
