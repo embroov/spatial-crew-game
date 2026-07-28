@@ -30,13 +30,14 @@ export function formatAudioUrl(url: string): string {
   const cleanUrl = url.trim();
 
   // If already proxied
-  if (cleanUrl.startsWith('/api/proxy-audio')) {
+  if (cleanUrl.includes('/api/proxy-audio')) {
     return cleanUrl;
   }
 
   // Check for Google Drive URL or File ID
   if (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com') || cleanUrl.includes('drive.usercontent.google.com')) {
-    return `/api/proxy-audio?url=${encodeURIComponent(cleanUrl)}`;
+    const serverUrl = (import.meta.env.VITE_SERVER_URL || '').replace(/\/$/, '');
+    return `${serverUrl}/api/proxy-audio?url=${encodeURIComponent(cleanUrl)}`;
   }
 
   // Match Dropbox share links: ?dl=0 -> ?raw=1
